@@ -3,11 +3,11 @@ package source
 import (
 	"errors"
 	"math/rand"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/dlclark/regexp2"
 	"github.com/rafaelmartins/b8r/internal/source/folder"
 	"github.com/rafaelmartins/b8r/internal/source/fp"
 )
@@ -31,7 +31,7 @@ type Source struct {
 	backend   SourceBackend
 	items     []string
 	randomize bool
-	filter    *regexp.Regexp
+	filter    *regexp2.Regexp
 	found     bool
 }
 
@@ -47,7 +47,7 @@ func New(name string, randomize bool, filter string) (*Source, error) {
 		return nil, errors.New("source: not found")
 	}
 
-	f, err := regexp.Compile(filter)
+	f, err := regexp2.Compile(filter, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *Source) list() ([]string, error) {
 	l := []string{}
 	if s.filter != nil {
 		for _, v := range lr {
-			if s.filter.MatchString(v) {
+			if ok, err := s.filter.MatchString(v); err == nil && ok {
 				l = append(l, v)
 			}
 		}

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dlclark/regexp2"
-	"github.com/rafaelmartins/b8r/internal/source/folder"
 	"github.com/rafaelmartins/b8r/internal/source/fp"
+	"github.com/rafaelmartins/b8r/internal/source/local"
 )
 
 var errSkip = errors.New("source: skip")
@@ -23,7 +23,7 @@ type SourceBackend interface {
 }
 
 var registry = []SourceBackend{
-	&folder.FolderSource{},
+	&local.LocalSource{},
 	&fp.FpSource{},
 }
 

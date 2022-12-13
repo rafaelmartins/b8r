@@ -68,7 +68,7 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	srcName := "folder"
+	srcName := "local"
 	if *ffp {
 		srcName = "fp"
 	}
@@ -78,7 +78,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if srcName == "folder" {
+	if srcName == "local" {
 		if len(flag.Args()) > 0 {
 			src.SetParameter("path", flag.Arg(0))
 		} else {

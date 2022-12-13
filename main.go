@@ -21,8 +21,9 @@ const (
 
 var (
 	ffp     = flag.Bool("fp", false, "use fp source")
-	frand   = flag.Bool("random", false, "randomize items")
 	fmute   = flag.Bool("mute", false, "mute by default")
+	frand   = flag.Bool("random", false, "randomize items")
+	fstart  = flag.Bool("start", false, "load first item during startup")
 	ffilter = flag.String("filter", ".*", "regex to filter items")
 
 	mod b8.Modifier
@@ -127,6 +128,41 @@ func main() {
 
 	paused := false
 
+	loadFile := func() error {
+		next, err := src.Pop()
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Playing: %s\n", next)
+
+		file, err := src.GetFile(next)
+		if err != nil {
+			return err
+		}
+
+		if err := m.SetProperty("osd-playing-msg", next); err != nil {
+			return err
+		}
+		if err := m.SetProperty("pause", true); err != nil {
+			return err
+		}
+		if err := m.SetProperty("fullscreen", true); err != nil {
+			return err
+		}
+
+		waitingPlayback = true
+
+		_, err = m.Command("loadfile", file)
+		return err
+	}
+
+	if *fstart {
+		if err := loadFile(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	d.AddHandler(b8.BUTTON_1, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
@@ -138,32 +174,7 @@ func main() {
 				return m.SetProperty("fullscreen", true)
 			}
 
-			next, err := src.Pop()
-			if err != nil {
-				return err
-			}
-
-			fmt.Printf("Playing: %s\n", next)
-
-			file, err := src.GetFile(next)
-			if err != nil {
-				return err
-			}
-
-			if err := m.SetProperty("osd-playing-msg", next); err != nil {
-				return err
-			}
-			if err := m.SetProperty("pause", true); err != nil {
-				return err
-			}
-			if err := m.SetProperty("fullscreen", true); err != nil {
-				return err
-			}
-
-			waitingPlayback = true
-
-			_, err = m.Command("loadfile", file)
-			return err
+			return loadFile()
 		}
 
 		if pressed {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sync"
 
 	"github.com/rafaelmartins/b8r/internal/dataset"
 	"gopkg.in/yaml.v2"
@@ -22,6 +23,7 @@ type filedata struct {
 }
 
 type FpSource struct {
+	mtx    sync.Mutex
 	config *config
 	cache  *dataset.DataSet
 }
@@ -56,6 +58,9 @@ func (f *FpSource) List() ([]string, error) {
 		return nil, err
 	}
 
+	f.mtx.Lock()
+	defer f.mtx.Unlock()
+
 	f.config = cfg
 	f.cache = dataset.New()
 	for entry := range cfg.Aliases {
@@ -65,6 +70,9 @@ func (f *FpSource) List() ([]string, error) {
 }
 
 func (f *FpSource) GetFile(key string) (string, error) {
+	f.mtx.Lock()
+	defer f.mtx.Unlock()
+
 	if !f.cache.Contains(key) {
 		return "", errors.New("fp: invalid alias")
 	}

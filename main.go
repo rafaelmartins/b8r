@@ -25,6 +25,7 @@ var (
 	frand   = flag.Bool("random", false, "randomize items")
 	fstart  = flag.Bool("start", false, "load first item during startup")
 	ffilter = flag.String("filter", ".*", "regex to filter items")
+	fsn     = flag.String("sn", "", "serial number of device to use")
 
 	mod b8.Modifier
 
@@ -49,23 +50,18 @@ func holdKey(m *mpv.MPV, b *b8.Button, key string) error {
 func main() {
 	flag.Parse()
 
-	dev, err := b8.ListDevices()
+	dev, err := b8.GetDevice(*fsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if len(dev) != 1 {
-		log.Fatal("b8: device not found")
-	}
-
-	d := dev[0]
-	if err := d.Open(); err != nil {
+	if err := dev.Open(); err != nil {
 		log.Fatal(err)
 	}
-	defer d.Close()
+	defer dev.Close()
 
 	for i := 0; i < 3; i++ {
-		d.Led(b8.LedFlash)
+		dev.Led(b8.LedFlash)
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -93,12 +89,15 @@ func main() {
 	}
 
 	waitingPlayback := false
+	playing := ""
 
 	if err := m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
 		if !waitingPlayback {
 			return nil
 		}
 		waitingPlayback = false
+
+		fmt.Printf("Playing: %s\n", playing)
 
 		if err := mp.SetProperty("mute", *fmute); err != nil {
 			return err
@@ -134,8 +133,6 @@ func main() {
 			return err
 		}
 
-		fmt.Printf("Playing: %s\n", next)
-
 		file, err := src.GetFile(next)
 		if err != nil {
 			return err
@@ -152,6 +149,7 @@ func main() {
 		}
 
 		waitingPlayback = true
+		playing = next
 
 		_, err = m.Command("loadfile", file)
 		return err
@@ -163,7 +161,7 @@ func main() {
 		}
 	}
 
-	d.AddHandler(b8.BUTTON_1, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_1, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
 			if pressed || paused {
@@ -189,12 +187,11 @@ func main() {
 		return err
 	})
 
-	d.AddHandler(b8.BUTTON_2, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_2, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
 			if pressed {
 				return m.CyclePropertyValues("video-rotate", "90", "180", "270", "0")
-
 			}
 			return m.CycleProperty("mute")
 		}
@@ -204,29 +201,29 @@ func main() {
 		return m.CycleProperty("fullscreen")
 	})
 
-	d.AddHandler(b8.BUTTON_3, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_3, func(b *b8.Button) error {
 		if mod.Pressed() {
 			return holdKey(m, b, keySeek60Bwd)
 		}
 		return holdKey(m, b, keySeek5Bwd)
 	})
 
-	d.AddHandler(b8.BUTTON_4, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_4, func(b *b8.Button) error {
 		if mod.Pressed() {
 			return holdKey(m, b, keySeek60Fwd)
 		}
 		return holdKey(m, b, keySeek5Fwd)
 	})
 
-	d.AddHandler(b8.BUTTON_5, mod.Handler)
-	d.AddHandler(b8.BUTTON_5, func(b *b8.Button) error {
-		d.Led(b8.LedOn)
+	dev.AddHandler(b8.BUTTON_5, mod.Handler)
+	dev.AddHandler(b8.BUTTON_5, func(b *b8.Button) error {
+		dev.Led(b8.LedOn)
 		b.WaitForRelease()
-		d.Led(b8.LedOff)
+		dev.Led(b8.LedOff)
 		return nil
 	})
 
-	d.AddHandler(b8.BUTTON_6, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_6, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
 			data, err := m.GetProperty("video-zoom")
@@ -255,7 +252,7 @@ func main() {
 		return m.SetProperty("video-zoom", 0)
 	})
 
-	d.AddHandler(b8.BUTTON_7, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_7, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
 			if pressed {
@@ -269,7 +266,7 @@ func main() {
 		return m.SetProperty("video-align-y", -1)
 	})
 
-	d.AddHandler(b8.BUTTON_8, func(b *b8.Button) error {
+	dev.AddHandler(b8.BUTTON_8, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
 			if pressed {
@@ -283,7 +280,7 @@ func main() {
 		return m.SetProperty("video-align-x", 1)
 	})
 
-	if err := d.Listen(); err != nil {
+	if err := dev.Listen(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -2,8 +2,8 @@ github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 h1:y5HC9v93H5
 github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964/go.mod h1:Xd9hchkHSWYkEqJwUGisez3G1QY8Ryz0sdWrLPMGjLk=
 github.com/dlclark/regexp2 v1.7.0 h1:7lJfhqlPssTb1WQx4yvTHN0uElPEv52sbaECrAQxjAo=
 github.com/dlclark/regexp2 v1.7.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20221206015442-50149aa7874b h1:G0WGV4MAkRHAfJOEyJzDBGbcqatPMS2sThE/UNs/wiQ=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20221206015442-50149aa7874b/go.mod h1:jMBd54yfGI/Vjev9QhTpWoBhMbRmEEY/+6nXSVZDM14=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20221227015441-d1a4ccfdcb08 h1:ictdwHbZ2WpVZs9KAHo9aMCArTB/WLfEPqM7O7qU/yg=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20221227015441-d1a4ccfdcb08/go.mod h1:jMBd54yfGI/Vjev9QhTpWoBhMbRmEEY/+6nXSVZDM14=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7GC73Ei8pv4MzjDUNPHgQWJdtMAaDU=

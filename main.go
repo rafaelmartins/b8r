@@ -125,8 +125,6 @@ func main() {
 		}
 	}
 
-	paused := false
-
 	loadFile := func() error {
 		next, err := src.Pop()
 		if err != nil {
@@ -164,8 +162,13 @@ func main() {
 	dev.AddHandler(b8.BUTTON_1, func(b *b8.Button) error {
 		pressed := mod.Pressed()
 		if b.WaitForRelease() < 400*time.Millisecond {
+			paused := false
+			if pausedInt, err := m.GetProperty("pause"); err == nil {
+				if p, ok := pausedInt.(bool); ok {
+					paused = p
+				}
+			}
 			if pressed || paused {
-				paused = false
 				if err := m.SetProperty("pause", false); err != nil {
 					return err
 				}
@@ -180,7 +183,6 @@ func main() {
 				return err
 			}
 			err := m.SetProperty("fullscreen", false)
-			paused = true
 			return err
 		}
 		_, err := m.Command("stop")

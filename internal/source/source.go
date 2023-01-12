@@ -63,7 +63,7 @@ func (s *Source) SetParameter(key string, value string) error {
 	return s.backend.SetParameter(key, value)
 }
 
-func (s *Source) list() ([]string, error) {
+func (s *Source) List() ([]string, error) {
 	lr, err := s.backend.List()
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func (s *Source) pop() (string, error) {
 
 	if s.items == nil || len(s.items) == 0 {
 		s.found = false
-		items, err := s.list()
+		items, err := s.List()
 		if err != nil {
 			return "", err
 		}

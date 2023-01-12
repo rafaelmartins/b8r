@@ -20,6 +20,7 @@ const (
 )
 
 var (
+	fdump   = flag.Bool("dump", false, "dump source entries (after fitlering) and exit")
 	ffp     = flag.Bool("fp", false, "use fp source")
 	fmute   = flag.Bool("mute", false, "mute by default")
 	frand   = flag.Bool("random", false, "randomize items")
@@ -50,21 +51,6 @@ func holdKey(m *mpv.MPV, b *b8.Button, key string) error {
 func main() {
 	flag.Parse()
 
-	dev, err := b8.GetDevice(*fsn)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := dev.Open(); err != nil {
-		log.Fatal(err)
-	}
-	defer dev.Close()
-
-	for i := 0; i < 3; i++ {
-		dev.Led(b8.LedFlash)
-		time.Sleep(100 * time.Millisecond)
-	}
-
 	srcName := "local"
 	if *ffp {
 		srcName = "fp"
@@ -81,6 +67,32 @@ func main() {
 		} else {
 			src.SetParameter("path", ".")
 		}
+	}
+
+	if *fdump {
+		entries, err := src.List()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, entry := range entries {
+			fmt.Println(entry)
+		}
+		return
+	}
+
+	dev, err := b8.GetDevice(*fsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := dev.Open(); err != nil {
+		log.Fatal(err)
+	}
+	defer dev.Close()
+
+	for i := 0; i < 3; i++ {
+		dev.Led(b8.LedFlash)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	m, err := mpv.New()

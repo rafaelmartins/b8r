@@ -9,6 +9,7 @@ import (
 
 	"github.com/rafaelmartins/b8/go/b8"
 	"github.com/rafaelmartins/b8r/internal/mpv"
+	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
 )
 
@@ -26,6 +27,7 @@ var (
 	frand   = flag.Bool("random", false, "randomize items")
 	fstart  = flag.Bool("start", false, "load first item during startup")
 	ffilter = flag.String("filter", ".*", "regex to filter items")
+	fpreset = flag.String("preset", "", "preset to load. overrides most of other options")
 	fsn     = flag.String("sn", "", "serial number of device to use")
 
 	mod b8.Modifier
@@ -114,7 +116,33 @@ func loadNextFile(m *mpv.MPV, src *source.Source) error {
 }
 
 func main() {
+	pr, err := presets.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	flag.Parse()
+
+	if *fpreset == "" && len(flag.Args()) > 0 {
+		if p := pr.Get(flag.Arg(0)); p != nil {
+			*fpreset = flag.Arg(0)
+		}
+	}
+
+	if *fpreset != "" {
+		p := pr.Get(*fpreset)
+		if p == nil {
+			log.Fatalf("error: preset not found: %s", *fpreset)
+		}
+
+		// FIXME
+		*ffp = p.Source == "fp"
+
+		*fmute = p.Mute
+		*frand = p.Random
+		*fstart = p.Start
+		*ffilter = p.Filter
+	}
 
 	srcName := "local"
 	if *ffp {

@@ -21,14 +21,15 @@ const (
 )
 
 var (
-	fdump   = flag.Bool("dump", false, "dump source entries (after fitlering) and exit")
-	ffp     = flag.Bool("fp", false, "use fp source")
-	fmute   = flag.Bool("mute", false, "mute by default")
-	frand   = flag.Bool("random", false, "randomize items")
-	fstart  = flag.Bool("start", false, "load first item during startup")
-	ffilter = flag.String("filter", ".*", "regex to filter items")
-	fpreset = flag.String("preset", "", "preset to load. overrides most of other options")
-	fsn     = flag.String("sn", "", "serial number of device to use")
+	fdump      = flag.Bool("dump", false, "dump source entries (after fitlering) and exit")
+	ffp        = flag.Bool("fp", false, "use fp source")
+	fmute      = flag.Bool("mute", false, "mute by default")
+	frand      = flag.Bool("random", false, "randomize items")
+	frecursive = flag.Bool("recursive", false, "list items recursively")
+	fstart     = flag.Bool("start", false, "load first item during startup")
+	ffilter    = flag.String("filter", ".*", "regex to filter items")
+	fpreset    = flag.String("preset", "", "preset to load. overrides most of other options")
+	fsn        = flag.String("sn", "", "serial number of device to use")
 
 	mod b8.Modifier
 
@@ -140,6 +141,7 @@ func main() {
 
 		*fmute = p.Mute
 		*frand = p.Random
+		*frecursive = p.Recursive
 		*fstart = p.Start
 		*ffilter = p.Filter
 	}
@@ -160,6 +162,7 @@ func main() {
 		} else {
 			src.SetParameter("path", ".")
 		}
+		src.SetParameter("recursive", *frecursive)
 	}
 
 	if *fdump {

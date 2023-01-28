@@ -32,7 +32,7 @@ func (f *FpSource) Name() string {
 	return "fp"
 }
 
-func (f *FpSource) SetParameter(key string, value string) error {
+func (f *FpSource) SetParameter(key string, value interface{}) error {
 	return errors.New("fp: invalid parameter")
 }
 

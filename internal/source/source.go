@@ -16,7 +16,7 @@ var errSkip = errors.New("source: skip")
 
 type SourceBackend interface {
 	Name() string
-	SetParameter(key string, value string) error
+	SetParameter(key string, value interface{}) error
 	List() ([]string, error)
 	GetFile(key string) (string, error)
 	GetMimeType(key string) (string, error)
@@ -59,7 +59,7 @@ func New(name string, randomize bool, filter string) (*Source, error) {
 	}, nil
 }
 
-func (s *Source) SetParameter(key string, value string) error {
+func (s *Source) SetParameter(key string, value interface{}) error {
 	return s.backend.SetParameter(key, value)
 }
 

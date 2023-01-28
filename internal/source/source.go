@@ -75,6 +75,13 @@ func (s *Source) List() ([]string, error) {
 	if s.filter != nil {
 		for _, v := range lr {
 			if ok, err := s.filter.MatchString(v); err == nil && ok {
+				mt, err := s.backend.GetMimeType(v)
+				if err != nil {
+					continue
+				}
+				if !strings.HasPrefix(mt, "image/") && !strings.HasPrefix(mt, "video/") {
+					continue
+				}
 				l = append(l, v)
 			}
 		}
@@ -90,7 +97,7 @@ func (s *Source) List() ([]string, error) {
 	return l, nil
 }
 
-func (s *Source) pop() (string, error) {
+func (s *Source) Pop() (string, error) {
 	if s.items != nil && len(s.items) == 0 && !s.found {
 		return "", errors.New("source: no media found")
 	}
@@ -111,30 +118,8 @@ func (s *Source) pop() (string, error) {
 
 	var pop string
 	pop, s.items = s.items[0], s.items[1:]
-
-	mt, err := s.backend.GetMimeType(pop)
-	if err != nil {
-		return "", errSkip
-	}
-	if !strings.HasPrefix(mt, "image/") && !strings.HasPrefix(mt, "video/") {
-		return "", errSkip
-	}
-
 	s.found = true
 	return pop, nil
-}
-
-func (s *Source) Pop() (string, error) {
-	for {
-		p, err := s.pop()
-		if err == nil {
-			return p, nil
-		}
-
-		if err != errSkip {
-			return "", err
-		}
-	}
 }
 
 func (s *Source) GetFile(key string) (string, error) {

@@ -12,8 +12,6 @@ import (
 	"github.com/rafaelmartins/b8r/internal/source/local"
 )
 
-var errSkip = errors.New("source: skip")
-
 type SourceBackend interface {
 	Name() string
 	SetParameter(key string, value interface{}) error
@@ -32,7 +30,6 @@ type Source struct {
 	items     []string
 	randomize bool
 	filter    *regexp2.Regexp
-	found     bool
 }
 
 func New(name string, randomize bool, filter string) (*Source, error) {
@@ -98,12 +95,7 @@ func (s *Source) List() ([]string, error) {
 }
 
 func (s *Source) Pop() (string, error) {
-	if s.items != nil && len(s.items) == 0 && !s.found {
-		return "", errors.New("source: no media found")
-	}
-
 	if s.items == nil || len(s.items) == 0 {
-		s.found = false
 		items, err := s.List()
 		if err != nil {
 			return "", err
@@ -118,7 +110,6 @@ func (s *Source) Pop() (string, error) {
 
 	var pop string
 	pop, s.items = s.items[0], s.items[1:]
-	s.found = true
 	return pop, nil
 }
 

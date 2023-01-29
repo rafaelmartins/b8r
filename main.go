@@ -116,11 +116,15 @@ func loadNextFile(m *mpv.MPV, src *source.Source) error {
 	return err
 }
 
+func check(err any) {
+	if err != nil {
+		log.Fatal("error: ", err)
+	}
+}
+
 func main() {
 	pr, err := presets.New()
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 
 	flag.Parse()
 
@@ -131,19 +135,18 @@ func main() {
 	}
 
 	if *fpreset != "" {
-		p := pr.Get(*fpreset)
-		if p == nil {
-			log.Fatalf("error: preset not found: %s", *fpreset)
+		if p := pr.Get(*fpreset); p != nil {
+			// FIXME
+			*ffp = p.Source == "fp"
+
+			*fmute = p.Mute
+			*frand = p.Random
+			*frecursive = p.Recursive
+			*fstart = p.Start
+			*ffilter = p.Filter
+		} else {
+			check("preset not found: " + *fpreset)
 		}
-
-		// FIXME
-		*ffp = p.Source == "fp"
-
-		*fmute = p.Mute
-		*frand = p.Random
-		*frecursive = p.Recursive
-		*fstart = p.Start
-		*ffilter = p.Filter
 	}
 
 	srcName := "local"
@@ -153,22 +156,22 @@ func main() {
 
 	src, err := source.New(srcName, *frand, *ffilter)
 	if err != nil {
-		log.Fatal(err)
+		check(err)
 	}
 
 	if srcName == "local" {
+		path := "."
 		if len(flag.Args()) > 0 {
-			src.SetParameter("path", flag.Arg(0))
-		} else {
-			src.SetParameter("path", ".")
+			path = flag.Arg(0)
 		}
-		src.SetParameter("recursive", *frecursive)
+		check(src.SetParameter("path", path))
+		check(src.SetParameter("recursive", *frecursive))
 	}
 
 	if *fdump {
 		entries, err := src.List()
 		if err != nil {
-			log.Fatal(err)
+			check(err)
 		}
 		for _, entry := range entries {
 			fmt.Println(entry)
@@ -177,13 +180,9 @@ func main() {
 	}
 
 	dev, err := b8.GetDevice(*fsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 
-	if err := dev.Open(); err != nil {
-		log.Fatal(err)
-	}
+	check(dev.Open())
 	defer dev.Close()
 
 	for i := 0; i < 3; i++ {
@@ -192,11 +191,9 @@ func main() {
 	}
 
 	m, err := mpv.New()
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 
-	if err := m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
+	check(m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
 		if !waitingPlayback {
 			return nil
 		}
@@ -220,20 +217,15 @@ func main() {
 			return err
 		}
 		return mp.SetProperty("pause", false)
-	}); err != nil {
-		log.Fatal(err)
-	}
+	}))
 
 	for k, v := range keybinds {
-		if _, err := m.Command("keybind", k, v); err != nil {
-			log.Fatal(err)
-		}
+		_, err := m.Command("keybind", k, v)
+		check(err)
 	}
 
 	if *fstart {
-		if err := loadNextFile(m, src); err != nil {
-			log.Fatal(err)
-		}
+		check(loadNextFile(m, src))
 	}
 
 	dev.AddHandler(b8.BUTTON_1, b8Handler(
@@ -351,7 +343,5 @@ func main() {
 		},
 	))
 
-	if err := dev.Listen(); err != nil {
-		log.Fatal(err)
-	}
+	check(dev.Listen())
 }

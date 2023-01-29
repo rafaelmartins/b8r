@@ -24,6 +24,7 @@ type filedata struct {
 
 type FpSource struct {
 	mtx    sync.Mutex
+	entry  string
 	config *config
 	cache  *dataset.DataSet
 }
@@ -32,8 +33,25 @@ func (f *FpSource) Name() string {
 	return "fp"
 }
 
+func (f *FpSource) PreFilterMimeType() bool {
+	return false
+}
+
 func (f *FpSource) SetParameter(key string, value interface{}) error {
-	return errors.New("fp: invalid parameter")
+	switch key {
+	case "entry":
+		v, ok := value.(string)
+		if !ok {
+			return errors.New("fp: entry must be a string")
+		}
+
+		f.mtx.Lock()
+		defer f.mtx.Unlock()
+
+		f.entry = v
+	}
+
+	return nil
 }
 
 func (f *FpSource) List() ([]string, error) {
@@ -63,9 +81,15 @@ func (f *FpSource) List() ([]string, error) {
 
 	f.config = cfg
 	f.cache = dataset.New()
-	for entry := range cfg.Aliases {
-		f.cache.Add(entry)
+
+	if f.entry == "" {
+		for entry := range cfg.Aliases {
+			f.cache.Add(entry)
+		}
+	} else if _, ok := cfg.Aliases[f.entry]; ok {
+		f.cache.Add(f.entry)
 	}
+
 	return f.cache.Slice(), nil
 }
 

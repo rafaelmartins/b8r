@@ -13,6 +13,7 @@ type Preset struct {
 	Name      string `yaml:"name"`
 	Source    string `yaml:"source"`
 	Filter    string `yaml:"filter"`
+	Entry     string `yaml:"entry"`
 	Mute      bool   `yaml:"mute"`
 	Random    bool   `yaml:"random"`
 	Recursive bool   `yaml:"recursive"`

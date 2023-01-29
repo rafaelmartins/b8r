@@ -14,7 +14,7 @@ import (
 
 type LocalSource struct {
 	mtx       sync.Mutex
-	path      string
+	entry     string
 	isDir     bool
 	recursive bool
 	cache     *dataset.DataSet
@@ -24,27 +24,33 @@ func (f *LocalSource) Name() string {
 	return "local"
 }
 
+func (f *LocalSource) PreFilterMimeType() bool {
+	return true
+}
+
 func (f *LocalSource) SetParameter(key string, value interface{}) error {
 	switch key {
-	case "path":
+	case "entry":
 		v, ok := value.(string)
 		if !ok {
-			return errors.New("local: path must be a string")
+			return errors.New("local: entry must be a string")
 		}
 
 		f.mtx.Lock()
 		defer f.mtx.Unlock()
+
+		if v == "" {
+			v = "."
+		}
 
 		info, err := os.Stat(v)
 		if err != nil {
 			return err
 		}
 
-		f.path = v
+		f.entry = v
 		f.isDir = info.IsDir()
 		f.cache = nil
-
-		return nil
 
 	case "recursive":
 		v, ok := value.(bool)
@@ -56,29 +62,27 @@ func (f *LocalSource) SetParameter(key string, value interface{}) error {
 		defer f.mtx.Unlock()
 
 		f.recursive = v
-
-		return nil
 	}
 
-	return errors.New("local: invalid parameter")
+	return nil
 }
 
 func (f *LocalSource) List() ([]string, error) {
 	f.mtx.Lock()
 	defer f.mtx.Unlock()
 
-	if f.path == "" {
-		return nil, errors.New("local: missing path")
+	if f.entry == "" {
+		return nil, errors.New("local: missing entry")
 	}
 
 	if !f.isDir {
-		return []string{path.Base(f.path)}, nil
+		return []string{path.Base(f.entry)}, nil
 	}
 
 	f.cache = dataset.New()
 	root := true
 
-	if err := filepath.WalkDir(f.path, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(f.entry, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -94,7 +98,7 @@ func (f *LocalSource) List() ([]string, error) {
 			return nil
 		}
 
-		entry, err := filepath.Rel(f.path, path)
+		entry, err := filepath.Rel(f.entry, path)
 		if err != nil {
 			return err
 		}
@@ -112,19 +116,19 @@ func (f *LocalSource) GetFile(key string) (string, error) {
 	f.mtx.Lock()
 	defer f.mtx.Unlock()
 
-	if f.path == "" {
-		return "", errors.New("local: missing path")
+	if f.entry == "" {
+		return "", errors.New("local: missing entry")
 	}
 
 	if f.cache == nil {
-		return f.path, nil
+		return f.entry, nil
 	}
 
 	if !f.cache.Contains(key) {
 		return "", errors.New("local: invalid key")
 	}
 
-	return filepath.Join(f.path, key), nil
+	return filepath.Join(f.entry, key), nil
 }
 
 func (f *LocalSource) GetMimeType(key string) (string, error) {

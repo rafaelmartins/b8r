@@ -22,13 +22,11 @@ const (
 
 var (
 	fdump      = flag.Bool("dump", false, "dump source entries (after fitlering) and exit")
-	ffp        = flag.Bool("fp", false, "use fp source")
 	fmute      = flag.Bool("mute", false, "mute by default")
 	frand      = flag.Bool("random", false, "randomize items")
 	frecursive = flag.Bool("recursive", false, "list items recursively")
 	fstart     = flag.Bool("start", false, "load first item during startup")
 	ffilter    = flag.String("filter", ".*", "regex to filter items")
-	fpreset    = flag.String("preset", "", "preset to load. overrides most of other options")
 	fsn        = flag.String("sn", "", "serial number of device to use")
 
 	mod b8.Modifier
@@ -127,31 +125,29 @@ func main() {
 	check(err)
 
 	flag.Parse()
-
-	if *fpreset == "" && len(flag.Args()) > 0 {
-		if p := pr.Get(flag.Arg(0)); p != nil {
-			*fpreset = flag.Arg(0)
-		}
+	if len(flag.Args()) == 0 {
+		flag.Usage()
+		return
 	}
 
-	if *fpreset != "" {
-		if p := pr.Get(*fpreset); p != nil {
-			// FIXME
-			*ffp = p.Source == "fp"
+	var (
+		srcName string
+		entry   string
+	)
 
-			*fmute = p.Mute
-			*frand = p.Random
-			*frecursive = p.Recursive
-			*fstart = p.Start
-			*ffilter = p.Filter
-		} else {
-			check("preset not found: " + *fpreset)
+	if p := pr.Get(flag.Arg(0)); p != nil {
+		srcName = p.Source
+		entry = p.Entry
+		*fmute = p.Mute
+		*frand = p.Random
+		*frecursive = p.Recursive
+		*fstart = p.Start
+		*ffilter = p.Filter
+	} else {
+		srcName = flag.Arg(0)
+		if len(flag.Args()) >= 2 {
+			entry = flag.Arg(1)
 		}
-	}
-
-	srcName := "local"
-	if *ffp {
-		srcName = "fp"
 	}
 
 	src, err := source.New(srcName, *frand, *ffilter)
@@ -159,22 +155,16 @@ func main() {
 		check(err)
 	}
 
-	if srcName == "local" {
-		path := "."
-		if len(flag.Args()) > 0 {
-			path = flag.Arg(0)
-		}
-		check(src.SetParameter("path", path))
-		check(src.SetParameter("recursive", *frecursive))
-	}
+	check(src.SetParameter("entry", entry))
+	check(src.SetParameter("recursive", *frecursive))
 
 	if *fdump {
 		entries, err := src.List()
 		if err != nil {
 			check(err)
 		}
-		for _, entry := range entries {
-			fmt.Println(entry)
+		for _, e := range entries {
+			fmt.Println(e)
 		}
 		return
 	}

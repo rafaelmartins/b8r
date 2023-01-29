@@ -12,8 +12,11 @@ import (
 	"github.com/rafaelmartins/b8r/internal/source/local"
 )
 
+var errSkip = errors.New("source: skip")
+
 type SourceBackend interface {
 	Name() string
+	PreFilterMimeType() bool
 	SetParameter(key string, value interface{}) error
 	List() ([]string, error)
 	GetFile(key string) (string, error)
@@ -60,6 +63,15 @@ func (s *Source) SetParameter(key string, value interface{}) error {
 	return s.backend.SetParameter(key, value)
 }
 
+func (s *Source) isMimeTypeSupported(key string) bool {
+	mt, err := s.backend.GetMimeType(key)
+	if err != nil {
+		return false
+	}
+
+	return strings.HasPrefix(mt, "image/") || strings.HasPrefix(mt, "video/")
+}
+
 func (s *Source) List() ([]string, error) {
 	lr, err := s.backend.List()
 	if err != nil {
@@ -72,11 +84,7 @@ func (s *Source) List() ([]string, error) {
 	if s.filter != nil {
 		for _, v := range lr {
 			if ok, err := s.filter.MatchString(v); err == nil && ok {
-				mt, err := s.backend.GetMimeType(v)
-				if err != nil {
-					continue
-				}
-				if !strings.HasPrefix(mt, "image/") && !strings.HasPrefix(mt, "video/") {
+				if s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v) {
 					continue
 				}
 				l = append(l, v)
@@ -94,7 +102,7 @@ func (s *Source) List() ([]string, error) {
 	return l, nil
 }
 
-func (s *Source) Pop() (string, error) {
+func (s *Source) pop() (string, error) {
 	if s.items == nil || len(s.items) == 0 {
 		items, err := s.List()
 		if err != nil {
@@ -110,7 +118,25 @@ func (s *Source) Pop() (string, error) {
 
 	var pop string
 	pop, s.items = s.items[0], s.items[1:]
+
+	if !s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(pop) {
+		return "", errSkip
+	}
+
 	return pop, nil
+}
+
+func (s *Source) Pop() (string, error) {
+	for {
+		p, err := s.pop()
+		if err == nil {
+			return p, nil
+		}
+
+		if err != errSkip {
+			return "", err
+		}
+	}
 }
 
 func (s *Source) GetFile(key string) (string, error) {

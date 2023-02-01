@@ -1,13 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"math"
 	"time"
 
 	"github.com/rafaelmartins/b8/go/b8"
+	"github.com/rafaelmartins/b8r/internal/cli"
 	"github.com/rafaelmartins/b8r/internal/mpv"
 	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
@@ -21,13 +21,70 @@ const (
 )
 
 var (
-	fdump      = flag.Bool("dump", false, "dump source entries (after fitlering) and exit")
-	fmute      = flag.Bool("mute", false, "mute by default")
-	frand      = flag.Bool("random", false, "randomize items")
-	frecursive = flag.Bool("recursive", false, "list items recursively")
-	fstart     = flag.Bool("start", false, "load first item during startup")
-	ffilter    = flag.String("filter", ".*", "regex to filter items")
-	fsn        = flag.String("sn", "", "serial number of device to use")
+	oDump = &cli.BoolOption{
+		Name:    'd',
+		Default: false,
+		Help:    "dump source entries (after fitlering) and exit",
+	}
+	oMute = &cli.BoolOption{
+		Name:    'm',
+		Default: false,
+		Help:    "mute by default",
+	}
+	oRand = &cli.BoolOption{
+		Name:    'z',
+		Default: false,
+		Help:    "randomize items",
+	}
+	oRecursive = &cli.BoolOption{
+		Name:    'r',
+		Default: false,
+		Help:    "list items recursively",
+	}
+	oStart = &cli.BoolOption{
+		Name:    's',
+		Default: false,
+		Help:    "load first item during startup",
+	}
+	oFilter = &cli.StringOption{
+		Name:    'f',
+		Default: ".*",
+		Help:    "regex to filter items",
+		Metavar: "REGEX",
+	}
+	oSerialNumber = &cli.StringOption{
+		Name:    'n',
+		Default: "",
+		Help:    "serial number of device to use",
+		Metavar: "SERIAL_NUMBER",
+	}
+	aPresetOrSource = &cli.Argument{
+		Name:     "preset-or-source",
+		Required: true,
+		Help:     "a preset or a source to use",
+	}
+	aEntry = &cli.Argument{
+		Name:     "entry",
+		Required: false,
+		Help:     "a single entry to load (requires a source)",
+	}
+
+	cCli = &cli.Cli{
+		Help: `¯\_(ツ)_/¯`,
+		Options: []cli.Option{
+			oDump,
+			oMute,
+			oRand,
+			oRecursive,
+			oStart,
+			oFilter,
+			oSerialNumber,
+		},
+		Arguments: []*cli.Argument{
+			aPresetOrSource,
+			aEntry,
+		},
+	}
 
 	mod b8.Modifier
 
@@ -121,55 +178,60 @@ func check(err any) {
 }
 
 func main() {
+	cCli.Parse()
+
 	pr, err := presets.New()
 	check(err)
-
-	flag.Parse()
-	if len(flag.Args()) == 0 {
-		flag.Usage()
-		return
-	}
 
 	var (
 		srcName string
 		entry   string
+
+		fmute      bool
+		frand      bool
+		frecursive bool
+		fstart     bool
+		ffilter    string
 	)
 
-	if p := pr.Get(flag.Arg(0)); p != nil {
+	if p := pr.Get(aPresetOrSource.GetValue()); p != nil {
 		srcName = p.Source
 		entry = p.Entry
-		*fmute = p.Mute
-		*frand = p.Random
-		*frecursive = p.Recursive
-		*fstart = p.Start
-		*ffilter = p.Filter
+		fmute = p.Mute
+		frand = p.Random
+		frecursive = p.Recursive
+		fstart = p.Start
+		ffilter = p.Filter
 	} else {
-		srcName = flag.Arg(0)
-		if len(flag.Args()) >= 2 {
-			entry = flag.Arg(1)
+		srcName = aPresetOrSource.GetValue()
+		if e := aEntry.GetValue(); e != "" {
+			entry = e
 		}
+
+		fmute = oMute.GetValue()
+		frand = oRand.GetValue()
+		frecursive = oRecursive.GetValue()
+		fstart = oStart.GetValue()
+		ffilter = oFilter.GetValue()
 	}
 
-	src, err := source.New(srcName, *frand, *ffilter)
-	if err != nil {
-		check(err)
-	}
+	src, err := source.New(srcName, frand, ffilter)
+	check(err)
 
 	check(src.SetParameter("entry", entry))
-	check(src.SetParameter("recursive", *frecursive))
+	check(src.SetParameter("recursive", frecursive))
 
-	if *fdump {
+	if oDump.GetValue() {
 		entries, err := src.List()
-		if err != nil {
-			check(err)
-		}
+		check(err)
+
 		for _, e := range entries {
 			fmt.Println(e)
 		}
 		return
 	}
 
-	dev, err := b8.GetDevice(*fsn)
+	dev, err := b8.GetDevice(oSerialNumber.GetValue())
 	check(err)
 
 	check(dev.Open())
@@ -191,7 +253,7 @@ func main() {
 
 		fmt.Printf("Playing: %s\n", playing)
 
-		if err := mp.SetProperty("mute", *fmute); err != nil {
+		if err := mp.SetProperty("mute", fmute); err != nil {
 			return err
 		}
 		if err := mp.SetProperty("video-align-x", 0); err != nil {
@@ -214,7 +276,7 @@ func main() {
 		check(err)
 	}
 
-	if *fstart {
+	if fstart {
 		check(loadNextFile(m, src))
 	}
 
@@ -279,7 +341,7 @@ func main() {
 			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data.(float64))*1.25))
 		},
 		func(b *b8.Button) error {
-			if err := m.SetProperty("mute", *fmute); err != nil {
+			if err := m.SetProperty("mute", fmute); err != nil {
 				return err
 			}
 			if err := m.SetProperty("video-align-x", 0); err != nil {

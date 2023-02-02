@@ -58,6 +58,19 @@ var (
 		Default: "",
 		Help:    "serial number of device to use",
 		Metavar: "SERIAL_NUMBER",
+		CompletionHandler: func(cur string) []string {
+			devs, err := b8.Enumerate()
+			if err != nil {
+				return nil
+			}
+			rv := []string{}
+			for _, d := range devs {
+				if sn := d.SerialNumber(); strings.HasPrefix(sn, cur) {
+					rv = append(rv, sn)
+				}
+			}
+			return rv
+		},
 	}
 	aPresetOrSource = &cli.Argument{
 		Name:     "preset-or-source",

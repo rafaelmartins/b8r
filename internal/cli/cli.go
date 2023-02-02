@@ -14,6 +14,8 @@ import (
 
 var errValidation = errors.New("validation error")
 
+type OptionCompletionFunc func(cur string) []string
+
 type Option interface {
 	GetName() byte
 	GetHelp() string
@@ -21,6 +23,7 @@ type Option interface {
 	SetValue(v string) error
 	SetDefault()
 	IsFlag() bool
+	GetCompletionHandler() OptionCompletionFunc
 }
 
 type BoolOption struct {
@@ -69,16 +72,21 @@ func (o *BoolOption) IsFlag() bool {
 	return true
 }
 
+func (o *BoolOption) GetCompletionHandler() OptionCompletionFunc {
+	return nil
+}
+
 func (o *BoolOption) GetValue() bool {
 	return o.value
 }
 
 type StringOption struct {
-	Name    byte
-	Default string
-	Help    string
-	Metavar string
-	value   string
+	Name              byte
+	Default           string
+	Help              string
+	Metavar           string
+	CompletionHandler OptionCompletionFunc
+	value             string
 }
 
 func (o *StringOption) GetName() byte {
@@ -104,6 +112,10 @@ func (o *StringOption) SetValue(v string) error {
 
 func (o *StringOption) IsFlag() bool {
 	return false
+}
+
+func (o *StringOption) GetCompletionHandler() OptionCompletionFunc {
+	return o.CompletionHandler
 }
 
 func (o *StringOption) SetDefault() {
@@ -165,13 +177,75 @@ func (c *Cli) init() {
 	}
 }
 
-func (c *Cli) parseOpt(name byte, opt []string) (bool, error) {
-	var op Option
-	for _, o := range append(c.iOptions, c.Options...) {
-		if o != nil && o.GetName() == name {
-			op = o
+func (c *Cli) getOption(name byte) Option {
+	opts := append(c.iOptions, c.Options...)
+	for i := len(opts) - 1; i >= 0; i-- {
+		if o := opts[i]; o != nil && o.GetName() == name {
+			return o
 		}
 	}
+	return nil
+}
+
+func (c *Cli) completion(argv []string) {
+	c.init()
+
+	compLine, found := os.LookupEnv("COMP_LINE")
+	if !found || len(os.Args) != 4 {
+		return
+	}
+
+	cur := os.Args[2]
+	prev := os.Args[3]
+
+	args, _ := shlex.Split(compLine)
+	c.parse(args)
+
+	comp := []string{}
+
+	if strings.HasPrefix(cur, "-") {
+		for _, o := range append(c.iOptions, c.Options...) {
+			if n := fmt.Sprintf("-%c", o.GetName()); o != nil && strings.HasPrefix(n, cur) {
+				comp = append(comp, n)
+			}
+		}
+	}
+
+	aPrev := ""
+	if cur == "" || !strings.HasPrefix(cur, "-") {
+		found := false
+		if strings.HasPrefix(prev, "-") {
+			if len(prev) == 2 {
+				if o := c.getOption(prev[1]); o != nil && !o.IsFlag() {
+					if h := o.GetCompletionHandler(); h != nil {
+						comp = append(comp, h(cur)...)
+					}
+					found = true
+				}
+			}
+		}
+		if !found {
+			for _, a := range c.Arguments {
+				if a != nil && (!a.isSet || a.GetValue() == cur) {
+					if a.CompletionHandler != nil {
+						comp = append(comp, a.CompletionHandler(aPrev, cur)...)
+					}
+					break
+				}
+				aPrev = a.GetValue()
+			}
+		}
+	}
+
+	for _, c := range comp {
+		fmt.Println(c)
+	}
+
+	os.Exit(0)
+}
+
+func (c *Cli) parseOpt(name byte, opt []string) (bool, error) {
+	op := c.getOption(name)
 	if op == nil || len(opt) == 0 {
 		return false, fmt.Errorf("%w: invalid option: -%c", errValidation, name)
 	}
@@ -195,49 +269,6 @@ func (c *Cli) parseOpt(name byte, opt []string) (bool, error) {
 	}
 
 	return true, op.SetValue(opt[1])
-}
-
-func (c *Cli) completion(argv []string) {
-	c.init()
-
-	compLine, found := os.LookupEnv("COMP_LINE")
-	if !found || len(os.Args) != 4 {
-		return
-	}
-
-	cur := os.Args[2]
-
-	args, _ := shlex.Split(compLine)
-	c.parse(args)
-
-	comp := []string{}
-
-	if strings.HasPrefix(cur, "-") {
-		for _, o := range append(c.iOptions, c.Options...) {
-			if n := fmt.Sprintf("-%c", o.GetName()); o != nil && strings.HasPrefix(n, cur) {
-				comp = append(comp, n)
-			}
-		}
-	}
-
-	prev := ""
-	if cur == "" || !strings.HasPrefix(cur, "-") {
-		for _, a := range c.Arguments {
-			if a != nil && (!a.isSet || a.GetValue() == cur) {
-				if a.CompletionHandler != nil {
-					comp = append(comp, a.CompletionHandler(prev, cur)...)
-				}
-				break
-			}
-			prev = a.GetValue()
-		}
-	}
-
-	for _, c := range comp {
-		fmt.Println(c)
-	}
-
-	os.Exit(0)
 }
 
 func (c *Cli) parse(argv []string) error {

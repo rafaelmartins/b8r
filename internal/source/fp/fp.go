@@ -7,10 +7,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/rafaelmartins/b8r/internal/dataset"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type config struct {
@@ -54,7 +55,7 @@ func (f *FpSource) SetParameter(key string, value interface{}) error {
 	return nil
 }
 
-func (f *FpSource) List() ([]string, error) {
+func (f *FpSource) getConfig() (*config, error) {
 	fn, ok := os.LookupEnv("FP_CONFIG")
 	if !ok {
 		u, err := user.Current()
@@ -73,6 +74,14 @@ func (f *FpSource) List() ([]string, error) {
 
 	cfg := &config{}
 	if err := yaml.NewDecoder(fp).Decode(cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func (f *FpSource) List() ([]string, error) {
+	cfg, err := f.getConfig()
+	if err != nil {
 		return nil, err
 	}
 
@@ -125,4 +134,19 @@ func (f *FpSource) GetMimeType(key string) (string, error) {
 	}
 
 	return fd.Mimetype, nil
+}
+
+func (f *FpSource) CompletionHandler(prev string, cur string) []string {
+	cfg, err := f.getConfig()
+	if err != nil {
+		return nil
+	}
+
+	rv := []string{}
+	for e := range cfg.Aliases {
+		if strings.HasPrefix(e, cur) {
+			rv = append(rv, e)
+		}
+	}
+	return rv
 }

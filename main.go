@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/rafaelmartins/b8/go/b8"
@@ -24,7 +25,7 @@ var (
 	oDump = &cli.BoolOption{
 		Name:    'd',
 		Default: false,
-		Help:    "dump source entries (after fitlering) and exit",
+		Help:    "dump source entries (after filtering) and exit",
 	}
 	oMute = &cli.BoolOption{
 		Name:    'm',
@@ -62,11 +63,22 @@ var (
 		Name:     "preset-or-source",
 		Required: true,
 		Help:     "a preset or a source to use",
+		CompletionHandler: func(prev string, cur string) []string {
+			pr, _ := presets.New()
+			rv := []string{}
+			for _, c := range append(source.List(), pr.List()...) {
+				if strings.HasPrefix(c, cur) {
+					rv = append(rv, c)
+				}
+			}
+			return rv
+		},
 	}
 	aEntry = &cli.Argument{
-		Name:     "entry",
-		Required: false,
-		Help:     "a single entry to load (requires a source)",
+		Name:              "entry",
+		Required:          false,
+		Help:              "a single entry to load (requires a source)",
+		CompletionHandler: source.CompletionHandler,
 	}
 
 	cCli = &cli.Cli{
@@ -204,8 +216,8 @@ func main() {
 		ffilter = p.Filter
 	} else {
 		srcName = aPresetOrSource.GetValue()
-		if e := aEntry.GetValue(); e != "" {
-			entry = e
+		if aEntry.IsSet() {
+			entry = aEntry.GetValue()
 		}
 
 		fmute = oMute.GetValue()

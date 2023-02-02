@@ -138,3 +138,8 @@ func (f *LocalSource) GetMimeType(key string) (string, error) {
 	}
 	return mime.Detect(filename)
 }
+
+func (f *LocalSource) CompletionHandler(prev string, cur string) []string {
+	// empty list means that bash will list files
+	return nil
+}

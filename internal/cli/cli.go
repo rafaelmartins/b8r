@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/google/shlex"
 )
 
 var errValidation = errors.New("validation error")
@@ -112,15 +114,23 @@ func (o *StringOption) GetValue() string {
 	return o.value
 }
 
+type ArgumentCompletionFunc func(prev string, cur string) []string
+
 type Argument struct {
-	Name     string
-	Help     string
-	Required bool
-	value    string
+	Name              string
+	Help              string
+	Required          bool
+	CompletionHandler ArgumentCompletionFunc
+	value             string
+	isSet             bool
 }
 
 func (a *Argument) GetValue() string {
 	return a.value
+}
+
+func (a *Argument) IsSet() bool {
+	return a.isSet
 }
 
 type Cli struct {
@@ -187,6 +197,49 @@ func (c *Cli) parseOpt(name byte, opt []string) (bool, error) {
 	return true, op.SetValue(opt[1])
 }
 
+func (c *Cli) completion(argv []string) {
+	c.init()
+
+	compLine, found := os.LookupEnv("COMP_LINE")
+	if !found || len(os.Args) != 4 {
+		return
+	}
+
+	cur := os.Args[2]
+
+	args, _ := shlex.Split(compLine)
+	c.parse(args)
+
+	comp := []string{}
+
+	if strings.HasPrefix(cur, "-") {
+		for _, o := range append(c.iOptions, c.Options...) {
+			if n := fmt.Sprintf("-%c", o.GetName()); o != nil && strings.HasPrefix(n, cur) {
+				comp = append(comp, n)
+			}
+		}
+	}
+
+	prev := ""
+	if cur == "" || !strings.HasPrefix(cur, "-") {
+		for _, a := range c.Arguments {
+			if a != nil && (!a.isSet || a.GetValue() == cur) {
+				if a.CompletionHandler != nil {
+					comp = append(comp, a.CompletionHandler(prev, cur)...)
+				}
+				break
+			}
+			prev = a.GetValue()
+		}
+	}
+
+	for _, c := range comp {
+		fmt.Println(c)
+	}
+
+	os.Exit(0)
+}
+
 func (c *Cli) parse(argv []string) error {
 	c.init()
 
@@ -224,6 +277,7 @@ func (c *Cli) parse(argv []string) error {
 		if iArg < len(c.Arguments) {
 			if a := c.Arguments[iArg]; a != nil {
 				a.value = arg
+				a.isSet = true
 				iArg++
 			}
 		}
@@ -239,6 +293,8 @@ func (c *Cli) parse(argv []string) error {
 }
 
 func (c *Cli) Parse() {
+	c.completion(os.Args)
+
 	err := c.parse(os.Args)
 
 	if err == nil || errors.Is(err, errValidation) {

@@ -21,6 +21,7 @@ type SourceBackend interface {
 	List() ([]string, error)
 	GetFile(key string) (string, error)
 	GetMimeType(key string) (string, error)
+	CompletionHandler(prev string, cur string) []string
 }
 
 var registry = []SourceBackend{
@@ -33,6 +34,23 @@ type Source struct {
 	items     []string
 	randomize bool
 	filter    *regexp2.Regexp
+}
+
+func List() []string {
+	rv := []string{}
+	for _, b := range registry {
+		rv = append(rv, b.Name())
+	}
+	return rv
+}
+
+func CompletionHandler(prev string, cur string) []string {
+	for _, b := range registry {
+		if b.Name() == prev {
+			return b.CompletionHandler(prev, cur)
+		}
+	}
+	return nil
 }
 
 func New(name string, randomize bool, filter string) (*Source, error) {

@@ -57,3 +57,11 @@ func (p Presets) Get(name string) *Preset {
 	}
 	return nil
 }
+
+func (p Presets) List() []string {
+	rv := []string{}
+	for _, pr := range p {
+		rv = append(rv, pr.Name)
+	}
+	return rv
+}

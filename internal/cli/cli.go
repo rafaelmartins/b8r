@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/google/shlex"
@@ -50,17 +49,7 @@ func (o *BoolOption) GetMetavar() string {
 }
 
 func (o *BoolOption) SetValue(v string) error {
-	if len(v) == 0 {
-		o.value = !o.Default
-		return nil
-	}
-
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return err
-	}
-
-	o.value = b
+	o.value = !o.Default
 	return nil
 }
 

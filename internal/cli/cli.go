@@ -22,6 +22,7 @@ type Option interface {
 	SetValue(v string) error
 	SetDefault()
 	IsFlag() bool
+	IsSet() bool
 	GetCompletionHandler() OptionCompletionFunc
 }
 
@@ -30,6 +31,7 @@ type BoolOption struct {
 	Default bool
 	Help    string
 	value   bool
+	isSet   bool
 }
 
 func (o *BoolOption) GetName() byte {
@@ -50,6 +52,7 @@ func (o *BoolOption) GetMetavar() string {
 
 func (o *BoolOption) SetValue(v string) error {
 	o.value = !o.Default
+	o.isSet = true
 	return nil
 }
 
@@ -59,6 +62,10 @@ func (o *BoolOption) SetDefault() {
 
 func (o *BoolOption) IsFlag() bool {
 	return true
+}
+
+func (o *BoolOption) IsSet() bool {
+	return o.isSet
 }
 
 func (o *BoolOption) GetCompletionHandler() OptionCompletionFunc {
@@ -76,6 +83,7 @@ type StringOption struct {
 	Metavar           string
 	CompletionHandler OptionCompletionFunc
 	value             string
+	isSet             bool
 }
 
 func (o *StringOption) GetName() byte {
@@ -96,11 +104,16 @@ func (o *StringOption) GetMetavar() string {
 
 func (o *StringOption) SetValue(v string) error {
 	o.value = v
+	o.isSet = true
 	return nil
 }
 
 func (o *StringOption) IsFlag() bool {
 	return false
+}
+
+func (o *StringOption) IsSet() bool {
+	return o.isSet
 }
 
 func (o *StringOption) GetCompletionHandler() OptionCompletionFunc {

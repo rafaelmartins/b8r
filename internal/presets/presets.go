@@ -12,7 +12,8 @@ import (
 type Preset struct {
 	Name      string `yaml:"name"`
 	Source    string `yaml:"source"`
-	Filter    string `yaml:"filter"`
+	Include   string `yaml:"include"`
+	Exclude   string `yaml:"exclude"`
 	Entry     string `yaml:"entry"`
 	Mute      bool   `yaml:"mute"`
 	Random    bool   `yaml:"random"`

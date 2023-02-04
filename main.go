@@ -47,10 +47,16 @@ var (
 		Default: false,
 		Help:    "load first item during startup",
 	}
-	oFilter = &cli.StringOption{
-		Name:    'f',
+	oInclude = &cli.StringOption{
+		Name:    'i',
 		Default: ".*",
-		Help:    "regex to filter items",
+		Help:    "regex to include all matched items",
+		Metavar: "REGEX",
+	}
+	oExclude = &cli.StringOption{
+		Name:    'e',
+		Default: "$^",
+		Help:    "regex to exclude all matched items (applied after -i)",
 		Metavar: "REGEX",
 	}
 	oSerialNumber = &cli.StringOption{
@@ -102,7 +108,8 @@ var (
 			oRand,
 			oRecursive,
 			oStart,
-			oFilter,
+			oInclude,
+			oExclude,
 			oSerialNumber,
 		},
 		Arguments: []*cli.Argument{
@@ -216,7 +223,8 @@ func main() {
 		frand      bool
 		frecursive bool
 		fstart     bool
-		ffilter    string
+		finclude   string
+		fexclude   string
 	)
 
 	if p := pr.Get(aPresetOrSource.GetValue()); p != nil {
@@ -226,7 +234,8 @@ func main() {
 		frand = p.Random
 		frecursive = p.Recursive
 		fstart = p.Start
-		ffilter = p.Filter
+		finclude = p.Include
+		fexclude = p.Exclude
 	} else {
 		srcName = aPresetOrSource.GetValue()
 		if aEntry.IsSet() {
@@ -237,10 +246,11 @@ func main() {
 		frand = oRand.GetValue()
 		frecursive = oRecursive.GetValue()
 		fstart = oStart.GetValue()
-		ffilter = oFilter.GetValue()
+		finclude = oInclude.GetValue()
+		fexclude = oExclude.GetValue()
 	}
 
-	src, err := source.New(srcName, frand, ffilter)
+	src, err := source.New(srcName, frand, finclude, fexclude)
 	check(err)
 
 	check(src.SetParameter("entry", entry))

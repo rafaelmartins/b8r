@@ -3,11 +3,11 @@ package source
 import (
 	"errors"
 	"math/rand"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/dlclark/regexp2"
 	"github.com/rafaelmartins/b8r/internal/source/fp"
 	"github.com/rafaelmartins/b8r/internal/source/local"
 )
@@ -33,7 +33,8 @@ type Source struct {
 	backend   SourceBackend
 	items     []string
 	randomize bool
-	filter    *regexp2.Regexp
+	include   *regexp.Regexp
+	exclude   *regexp.Regexp
 }
 
 func List() []string {
@@ -53,7 +54,7 @@ func CompletionHandler(prev string, cur string) []string {
 	return nil
 }
 
-func New(name string, randomize bool, filter string) (*Source, error) {
+func New(name string, randomize bool, include string, exclude string) (*Source, error) {
 	var backend SourceBackend
 	for _, r := range registry {
 		if r.Name() == name {
@@ -65,7 +66,12 @@ func New(name string, randomize bool, filter string) (*Source, error) {
 		return nil, errors.New("source: not found")
 	}
 
-	f, err := regexp2.Compile(filter, 0)
+	i, err := regexp.Compile(include)
+	if err != nil {
+		return nil, err
+	}
+
+	e, err := regexp.Compile(exclude)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +79,8 @@ func New(name string, randomize bool, filter string) (*Source, error) {
 	return &Source{
 		backend:   backend,
 		randomize: randomize,
-		filter:    f,
+		include:   i,
+		exclude:   e,
 	}, nil
 }
 
@@ -90,6 +97,20 @@ func (s *Source) isMimeTypeSupported(key string) bool {
 	return strings.HasPrefix(mt, "image/") || strings.HasPrefix(mt, "video/")
 }
 
+func (s *Source) toInclude(e string) bool {
+	if s.include == nil {
+		return true
+	}
+	return s.include.MatchString(e)
+}
+
+func (s *Source) toExclude(e string) bool {
+	if s.exclude == nil {
+		return false
+	}
+	return s.exclude.MatchString(e)
+}
+
 func (s *Source) List() ([]string, error) {
 	lr, err := s.backend.List()
 	if err != nil {
@@ -99,14 +120,9 @@ func (s *Source) List() ([]string, error) {
 	sort.Strings(lr)
 
 	l := []string{}
-	if s.filter != nil {
-		for _, v := range lr {
-			if ok, err := s.filter.MatchString(v); err == nil && ok {
-				if s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v) {
-					continue
-				}
-				l = append(l, v)
-			}
+	for _, v := range lr {
+		if s.toInclude(v) && !s.toExclude(v) && !(s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v)) {
+			l = append(l, v)
 		}
 	}
 

@@ -23,9 +23,11 @@ type result struct {
 type EventHandler func(m *MPV, event string, data map[string]interface{}) error
 
 type MPV struct {
-	cmd    *exec.Cmd
-	cmdErr error
-	socket net.Conn
+	cmd          *exec.Cmd
+	cmdIdle      bool
+	cmdExtraArgs []string
+	cmdErr       chan error
+	socket       net.Conn
 
 	mtx       sync.Mutex
 	requestID uint
@@ -33,34 +35,72 @@ type MPV struct {
 	handlers  map[string][]EventHandler
 }
 
-func (m *MPV) start() error {
-	cmd := exec.Command(
-		"mpv",
-		"--fullscreen",
-		"--idle",
-		"--image-display-duration=inf",
-		"--input-ipc-server="+ipcServer,
-		"--loop",
-		"--ontop",
-		"--really-quiet",
-	)
+func New(idle bool, extraArgs ...string) (*MPV, error) {
+	rv := &MPV{
+		cmdIdle:      idle,
+		cmdExtraArgs: extraArgs,
+		cmdErr:       make(chan error, 1),
+		pending:      make(map[uint]chan *result),
+		handlers:     make(map[string][]EventHandler),
+	}
+
+	if err := rv.Start(); err != nil {
+		return nil, err
+	}
+
+	// this will leak...
+	go rv.listen()
+
+	// we'll subscribe only for events we have handlers
+	if _, err := rv.Command("disable_event", "all"); err != nil {
+		return nil, err
+	}
+
+	return rv, nil
+}
+
+func (m *MPV) Start() error {
+	idle := "once"
+	if m.cmdIdle {
+		idle = "yes"
+	}
+	cmd := exec.Command("mpv", append(
+		[]string{
+			"--idle=" + idle,
+			"--input-ipc-server=" + ipcServer,
+		}, m.cmdExtraArgs...)...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
 	}
 
 	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if err := cmd.Start(); err != nil {
-		cmd.Wait()
-		return err
+	select {
+	case <-m.cmdErr:
+	default:
 	}
+
+	go func() {
+		m.cmdErr <- cmd.Run()
+	}()
 
 	var (
 		socket net.Conn
 		err    error
 	)
 	for i := 0; i < 20; i++ {
+		done := false
+		select {
+		case <-m.cmdErr:
+			done = true
+		default:
+		}
+		if done {
+			break
+		}
+
 		socket, err = dial()
 		if err == nil {
 			break
@@ -68,31 +108,19 @@ func (m *MPV) start() error {
 		time.Sleep(100 * time.Millisecond)
 	}
 	if err != nil {
-		cmd.Wait()
 		return err
 	}
 
 	m.mtx.Lock()
 	m.cmd = cmd
-	m.cmdErr = nil
 	m.socket = socket
 	m.mtx.Unlock()
 
 	return nil
 }
 
-func (m *MPV) wait() {
-	if m.cmd == nil {
-		return
-	}
-
-	err := m.cmd.Wait()
-
-	m.mtx.Lock()
-	m.cmd = nil
-	m.cmdErr = err
-	m.socket = nil
-	m.mtx.Unlock()
+func (m *MPV) Wait() error {
+	return <-m.cmdErr
 }
 
 func (m *MPV) listen() {
@@ -158,38 +186,6 @@ func (m *MPV) listen() {
 	}
 }
 
-func New() (*MPV, error) {
-	rv := &MPV{
-		pending:  make(map[uint]chan *result),
-		handlers: make(map[string][]EventHandler),
-	}
-
-	if err := rv.start(); err != nil {
-		return nil, err
-	}
-
-	go func() {
-		rv.wait()
-
-		for {
-			if err := rv.start(); err != nil {
-				log.Printf("error: %s", err)
-			}
-			rv.wait()
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	go rv.listen()
-
-	// we'll subscribe only for events we have handlers
-	if _, err := rv.Command("disable_event", "all"); err != nil {
-		return nil, err
-	}
-
-	return rv, nil
-}
-
 func (m *MPV) AddHandler(event string, fn EventHandler) error {
 	if fn == nil {
 		return nil
@@ -221,9 +217,6 @@ func (m *MPV) waitReady() bool {
 
 func (m *MPV) CommandWithContext(ctx context.Context, args ...interface{}) (interface{}, error) {
 	if m.cmd == nil {
-		if m.cmdErr != nil {
-			return nil, m.cmdErr
-		}
 		if !m.waitReady() {
 			return nil, errors.New("mpv: not running")
 		}

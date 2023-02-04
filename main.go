@@ -300,8 +300,25 @@ func main() {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	m, err := mpv.New()
+	m, err := mpv.New(
+		true,
+		"--fullscreen",
+		"--image-display-duration=inf",
+		"--loop",
+		"--ontop",
+		"--really-quiet",
+	)
 	check(err)
+
+	go func() {
+		check(m.Wait())
+
+		for {
+			check(m.Start())
+			check(m.Wait())
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 
 	check(m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
 		if !waitingPlayback {

@@ -215,38 +215,61 @@ func main() {
 	pr, err := presets.New()
 	check(err)
 
-	var (
-		srcName string
-		entry   string
-
-		fmute      bool
-		frand      bool
-		frecursive bool
-		fstart     bool
-		finclude   string
-		fexclude   string
-	)
+	srcName := ""
+	entry := ""
+	fmute := oMute.Default
+	frand := oRand.Default
+	frecursive := oRecursive.Default
+	fstart := oStart.Default
+	finclude := oInclude.Default
+	fexclude := oExclude.Default
 
 	if p := pr.Get(aPresetOrSource.GetValue()); p != nil {
 		srcName = p.Source
-		entry = p.Entry
-		fmute = p.Mute
-		frand = p.Random
-		frecursive = p.Recursive
-		fstart = p.Start
-		finclude = p.Include
-		fexclude = p.Exclude
+		if p.Entry != nil {
+			entry = *p.Entry
+		}
+		if p.Mute != nil {
+			fmute = *p.Mute
+		}
+		if p.Random != nil {
+			frand = *p.Random
+		}
+		if p.Recursive != nil {
+			frecursive = *p.Recursive
+		}
+		if p.Start != nil {
+			fstart = *p.Start
+		}
+		if p.Include != nil {
+			finclude = *p.Include
+		}
+		if p.Exclude != nil {
+			fexclude = *p.Exclude
+		}
 	} else {
 		srcName = aPresetOrSource.GetValue()
 		if aEntry.IsSet() {
 			entry = aEntry.GetValue()
 		}
+	}
 
+	if oMute.IsSet() {
 		fmute = oMute.GetValue()
+	}
+	if oRand.IsSet() {
 		frand = oRand.GetValue()
+	}
+	if oRecursive.IsSet() {
 		frecursive = oRecursive.GetValue()
+	}
+	if oStart.IsSet() {
 		fstart = oStart.GetValue()
+	}
+	if oInclude.IsSet() {
 		finclude = oInclude.GetValue()
+	}
+	if oExclude.IsSet() {
 		fexclude = oExclude.GetValue()
 	}
 

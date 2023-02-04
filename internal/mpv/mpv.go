@@ -196,8 +196,8 @@ func (m *MPV) AddHandler(event string, fn EventHandler) error {
 	}
 
 	m.mtx.Lock()
-	_, found := m.handlers[event]
-	m.handlers[event] = append(m.handlers[event], fn)
+	eh, found := m.handlers[event]
+	m.handlers[event] = append(eh, fn)
 	m.mtx.Unlock()
 
 	if !found {

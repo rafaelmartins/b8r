@@ -6,10 +6,13 @@ import (
 	"gopkg.in/natefinch/npipe.v2"
 )
 
-var (
-	ipcServer = `\\.\pipe\b8-mpv`
-)
+func ipcServerName(id string) string {
+	if id == "" {
+		id = "UNK"
+	}
+	return `\\.\pipe\b8r-mpv-` + id
+}
 
-func dial() (net.Conn, error) {
-	return npipe.Dial(ipcServer)
+func dial(id string) (net.Conn, error) {
+	return npipe.Dial(ipcServerName(id))
 }

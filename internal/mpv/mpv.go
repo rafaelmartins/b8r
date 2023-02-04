@@ -23,6 +23,8 @@ type result struct {
 type EventHandler func(m *MPV, event string, data map[string]interface{}) error
 
 type MPV struct {
+	binary       string
+	id           string
 	cmd          *exec.Cmd
 	cmdIdle      bool
 	cmdExtraArgs []string
@@ -35,8 +37,10 @@ type MPV struct {
 	handlers  map[string][]EventHandler
 }
 
-func New(idle bool, extraArgs ...string) (*MPV, error) {
+func New(binary string, id string, idle bool, extraArgs ...string) (*MPV, error) {
 	rv := &MPV{
+		binary:       binary,
+		id:           id,
 		cmdIdle:      idle,
 		cmdExtraArgs: extraArgs,
 		cmdErr:       make(chan error, 1),
@@ -60,14 +64,18 @@ func New(idle bool, extraArgs ...string) (*MPV, error) {
 }
 
 func (m *MPV) Start() error {
+	binary := m.binary
+	if binary == "" {
+		binary = "mpv"
+	}
 	idle := "once"
 	if m.cmdIdle {
 		idle = "yes"
 	}
-	cmd := exec.Command("mpv", append(
+	cmd := exec.Command(binary, append(
 		[]string{
 			"--idle=" + idle,
-			"--input-ipc-server=" + ipcServer,
+			"--input-ipc-server=" + ipcServerName(m.id),
 		}, m.cmdExtraArgs...)...)
 	if errors.Is(cmd.Err, exec.ErrDot) {
 		cmd.Err = nil
@@ -101,7 +109,7 @@ func (m *MPV) Start() error {
 			break
 		}
 
-		socket, err = dial()
+		socket, err = dial(m.id)
 		if err == nil {
 			break
 		}

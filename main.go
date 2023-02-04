@@ -301,6 +301,8 @@ func main() {
 	}
 
 	m, err := mpv.New(
+		"mpv",
+		dev.SerialNumber(),
 		true,
 		"--fullscreen",
 		"--image-display-duration=inf",

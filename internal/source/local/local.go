@@ -28,6 +28,10 @@ func (f *LocalSource) PreFilterMimeType() bool {
 	return true
 }
 
+func (f *LocalSource) IsSingleItem() bool {
+	return !f.isDir
+}
+
 func (f *LocalSource) SetParameter(key string, value interface{}) error {
 	switch key {
 	case "entry":

@@ -17,6 +17,7 @@ var errSkip = errors.New("source: skip")
 type SourceBackend interface {
 	Name() string
 	PreFilterMimeType() bool
+	IsSingleItem() bool
 	SetParameter(key string, value interface{}) error
 	List() ([]string, error)
 	GetFile(key string) (string, error)
@@ -111,6 +112,10 @@ func (s *Source) toExclude(e string) bool {
 	return s.exclude.MatchString(e)
 }
 
+func (s *Source) IsSingleItem() bool {
+	return s.backend.IsSingleItem()
+}
+
 func (s *Source) List() ([]string, error) {
 	lr, err := s.backend.List()
 	if err != nil {
@@ -120,17 +125,22 @@ func (s *Source) List() ([]string, error) {
 	sort.Strings(lr)
 
 	l := []string{}
-	for _, v := range lr {
-		if s.toInclude(v) && !s.toExclude(v) && !(s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v)) {
-			l = append(l, v)
-		}
-	}
 
-	if s.randomize {
-		rand.Seed(time.Now().UnixNano())
-		rand.Shuffle(len(l), func(i int, j int) {
-			l[i], l[j] = l[j], l[i]
-		})
+	if s.backend.IsSingleItem() {
+		l = append(l, lr...)
+	} else {
+		for _, v := range lr {
+			if s.toInclude(v) && !s.toExclude(v) && !(s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v)) {
+				l = append(l, v)
+			}
+		}
+
+		if s.randomize {
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(l), func(i int, j int) {
+				l[i], l[j] = l[j], l[i]
+			})
+		}
 	}
 
 	return l, nil

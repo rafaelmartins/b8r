@@ -89,7 +89,7 @@ var (
 	aEntry = &cli.Argument{
 		Name:              "entry",
 		Required:          false,
-		Help:              "a single entry to load (requires a source)",
+		Help:              "item or collection to load (requires a source. if item, forces -s, ignores -i -e)",
 		CompletionHandler: source.CompletionHandler,
 	}
 
@@ -219,6 +219,11 @@ func main() {
 
 	check(src.SetParameter("entry", entry))
 	check(src.SetParameter("recursive", frecursive))
+
+	if src.IsSingleItem() {
+		fstart = true
+		exit = true
+	}
 
 	if oDump.GetValue() {
 		entries, err := src.List()

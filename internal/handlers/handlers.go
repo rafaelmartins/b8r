@@ -173,6 +173,9 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data.(float64))*1.25))
 		},
 		func(b *b8.Button) error {
+			if _, err := m.Command("vf", "remove", "hflip"); err != nil {
+				return err
+			}
 			if err := m.SetProperty("video-align-x", 0); err != nil {
 				return err
 			}

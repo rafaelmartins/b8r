@@ -29,10 +29,35 @@ var (
 
 type LoadNextFunc func(m *mpv.MPV, src *source.Source) error
 
-func b8Handler(short b8.ButtonHandler, long b8.ButtonHandler, modShort b8.ButtonHandler, modLong b8.ButtonHandler) b8.ButtonHandler {
+func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, modShort b8.ButtonHandler, modLong b8.ButtonHandler) b8.ButtonHandler {
 	return func(b *b8.Button) error {
+		lpDuration := 400 * time.Millisecond
+		done := make(chan bool)
+
+		go func() {
+			ticker := time.NewTicker(lpDuration)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					dev.Led(b8.LedFlash)
+					return
+				}
+			}
+		}()
+
 		pressed := mod.Pressed()
-		if b.WaitForRelease() < 400*time.Millisecond {
+		duration := b.WaitForRelease()
+
+		select {
+		case done <- true:
+		default:
+		}
+
+		if duration < lpDuration {
 			if pressed {
 				if modShort != nil {
 					return modShort(b)
@@ -81,7 +106,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 	}
 
 	if s != nil {
-		dev.AddHandler(b8.BUTTON_1, b8Handler(
+		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
 				if pausedInt, err := m.GetProperty("pause"); err == nil {
 					if p, ok := pausedInt.(bool); ok && p {
@@ -114,7 +139,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 			nil,
 		))
 	} else {
-		dev.AddHandler(b8.BUTTON_1, b8Handler(
+		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
 				if pausedInt, err := m.GetProperty("pause"); err == nil {
 					if p, ok := pausedInt.(bool); ok && p {
@@ -138,7 +163,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 		))
 	}
 
-	dev.AddHandler(b8.BUTTON_2, b8Handler(
+	dev.AddHandler(b8.BUTTON_2, b8Handler(dev,
 		func(b *b8.Button) error {
 			return m.CycleProperty("mute")
 		},
@@ -158,13 +183,10 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 
 	dev.AddHandler(b8.BUTTON_5, mod.Handler)
 	dev.AddHandler(b8.BUTTON_5, func(b *b8.Button) error {
-		dev.Led(b8.LedOn)
-		b.WaitForRelease()
-		dev.Led(b8.LedOff)
-		return nil
+		return dev.Led(b8.LedFlash)
 	})
 
-	dev.AddHandler(b8.BUTTON_6, b8Handler(
+	dev.AddHandler(b8.BUTTON_6, b8Handler(dev,
 		func(b *b8.Button) error {
 			data, err := m.GetProperty("video-zoom")
 			if err != nil {
@@ -197,7 +219,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 		nil,
 	))
 
-	dev.AddHandler(b8.BUTTON_7, b8Handler(
+	dev.AddHandler(b8.BUTTON_7, b8Handler(dev,
 		func(b *b8.Button) error {
 			return m.AddProperty("video-align-y", -0.1)
 		},
@@ -212,7 +234,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 		},
 	))
 
-	dev.AddHandler(b8.BUTTON_8, b8Handler(
+	dev.AddHandler(b8.BUTTON_8, b8Handler(dev,
 		func(b *b8.Button) error {
 			return m.AddProperty("video-align-x", 0.1)
 		},

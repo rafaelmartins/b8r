@@ -43,7 +43,9 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 				case <-done:
 					return
 				case <-ticker.C:
-					dev.Led(b8.LedFlash)
+					if dev != nil {
+						dev.Led(b8.LedFlash)
+					}
 					return
 				}
 			}

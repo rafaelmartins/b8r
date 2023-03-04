@@ -103,10 +103,15 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 				return m.SetProperty("fullscreen", false)
 			},
 			func(b *b8.Button) error {
+				if cntInt, err := m.GetProperty("playlist-count"); err == nil {
+					if cnt, ok := cntInt.(float64); ok && cnt == 0 && exit != nil {
+						return exit(b)
+					}
+				}
 				_, err := m.Command("quit")
 				return err
 			},
-			exit,
+			nil,
 		))
 	} else {
 		dev.AddHandler(b8.BUTTON_1, b8Handler(

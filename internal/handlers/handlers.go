@@ -75,10 +75,16 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 			if modLong != nil {
 				return modLong(b)
 			}
+			if modShort != nil {
+				return modShort(b)
+			}
 			return nil
 		}
 		if long != nil {
 			return long(b)
+		}
+		if short != nil {
+			return short(b)
 		}
 		return nil
 	}

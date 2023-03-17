@@ -55,11 +55,6 @@ func New(binary string, id string, idle bool, extraArgs ...string) (*MPV, error)
 	// this will leak...
 	go rv.listen()
 
-	// we'll subscribe only for events we have handlers
-	if _, err := rv.Command("disable_event", "all"); err != nil {
-		return nil, err
-	}
-
 	return rv, nil
 }
 
@@ -200,16 +195,8 @@ func (m *MPV) AddHandler(event string, fn EventHandler) error {
 	}
 
 	m.mtx.Lock()
-	eh, found := m.handlers[event]
-	m.handlers[event] = append(eh, fn)
+	m.handlers[event] = append(m.handlers[event], fn)
 	m.mtx.Unlock()
-
-	if !found {
-		if _, err := m.Command("enable_event", event); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

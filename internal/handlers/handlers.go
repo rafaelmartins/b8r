@@ -141,7 +141,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 						return exit(b)
 					}
 				}
-				_, err := m.Command("quit")
+				_, err := m.Command("stop")
 				return err
 			},
 			nil,
@@ -169,7 +169,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 						return exit(b)
 					}
 				}
-				_, err := m.Command("quit")
+				_, err := m.Command("stop")
 				return err
 			},
 			nil,

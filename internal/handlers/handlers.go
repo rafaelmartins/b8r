@@ -108,7 +108,7 @@ func b8HoldKeyHandler(m *mpv.MPV, key string, modKey string) b8.ButtonHandler {
 
 func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext LoadNextFunc, exit b8.ButtonHandler) error {
 	for k, v := range keybinds {
-		if _, err := m.Command("keybind", k, v); err != nil {
+		if err := m.SetupCommand("keybind", k, v); err != nil {
 			return err
 		}
 	}

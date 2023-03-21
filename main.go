@@ -284,6 +284,8 @@ func main() {
 		return mp.SetProperty("pause", false)
 	}))
 
+	check(m.Start())
+
 	check(handlers.RegisterHandlers(dev, m, src, loadNextFile, func(b *b8.Button) error {
 		exit = true
 		_, err := m.Command("quit")

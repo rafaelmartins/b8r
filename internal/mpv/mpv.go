@@ -20,6 +20,15 @@ type result struct {
 	Data      interface{} `json:"data"`
 }
 
+type state uint8
+
+const (
+	stateStopped state = iota
+	stateStarting
+	stateRunning
+	stateExited
+)
+
 type EventHandler func(m *MPV, event string, data map[string]interface{}) error
 
 type MPV struct {
@@ -28,13 +37,16 @@ type MPV struct {
 	cmd          *exec.Cmd
 	cmdIdle      bool
 	cmdExtraArgs []string
-	cmdErr       chan error
+	cmdWait      chan bool
 	socket       net.Conn
+	state        state
+	err          error
 
-	mtx       sync.Mutex
-	requestID uint
-	pending   map[uint]chan *result
-	handlers  map[string][]EventHandler
+	mtx           sync.Mutex
+	requestID     uint
+	pending       map[uint]chan *result
+	handlers      map[string][]EventHandler
+	setupCommands [][]interface{}
 }
 
 func New(binary string, id string, idle bool, extraArgs ...string) (*MPV, error) {
@@ -43,22 +55,23 @@ func New(binary string, id string, idle bool, extraArgs ...string) (*MPV, error)
 		id:           id,
 		cmdIdle:      idle,
 		cmdExtraArgs: extraArgs,
-		cmdErr:       make(chan error, 1),
 		pending:      make(map[uint]chan *result),
 		handlers:     make(map[string][]EventHandler),
 	}
 
-	if err := rv.Start(); err != nil {
+	if err := rv.SetupCommand("disable_event", "all"); err != nil {
 		return nil, err
 	}
-
-	// this will leak...
-	go rv.listen()
-
 	return rv, nil
 }
 
 func (m *MPV) Start() error {
+	if m.state != stateStopped && m.state != stateExited {
+		return errors.New("mpv: already started")
+	}
+	m.state = stateStarting
+	m.cmdWait = make(chan bool)
+
 	binary := m.binary
 	if binary == "" {
 		binary = "mpv"
@@ -80,13 +93,11 @@ func (m *MPV) Start() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	select {
-	case <-m.cmdErr:
-	default:
-	}
-
 	go func() {
-		m.cmdErr <- cmd.Run()
+		m.state = stateRunning
+		m.err = cmd.Run()
+		m.state = stateExited
+		close(m.cmdWait)
 	}()
 
 	var (
@@ -94,14 +105,8 @@ func (m *MPV) Start() error {
 		err    error
 	)
 	for i := 0; i < 20; i++ {
-		done := false
-		select {
-		case <-m.cmdErr:
-			done = true
-		default:
-		}
-		if done {
-			break
+		if m.state == stateExited {
+			return m.err
 		}
 
 		socket, err = dial(m.id)
@@ -117,22 +122,26 @@ func (m *MPV) Start() error {
 	m.mtx.Lock()
 	m.cmd = cmd
 	m.socket = socket
+	setupCommands := m.setupCommands
 	m.mtx.Unlock()
 
+	go m.listen()
+
+	for _, scmd := range setupCommands {
+		if _, err := m.Command(scmd...); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (m *MPV) Wait() error {
-	return <-m.cmdErr
+	<-m.cmdWait
+	return m.err
 }
 
 func (m *MPV) listen() {
 	for {
-		if m.socket == nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
 		scanner := bufio.NewScanner(m.socket)
 		for scanner.Scan() {
 			buf := result{}
@@ -195,26 +204,27 @@ func (m *MPV) AddHandler(event string, fn EventHandler) error {
 	}
 
 	m.mtx.Lock()
-	m.handlers[event] = append(m.handlers[event], fn)
+	eh, found := m.handlers[event]
+	m.handlers[event] = append(eh, fn)
 	m.mtx.Unlock()
+
+	if !found {
+		if err := m.SetupCommand("enable_event", event); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (m *MPV) waitReady() bool {
-	for i := 0; i < 20; i++ {
-		if m.cmd != nil {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return m.cmd != nil
-}
-
 func (m *MPV) CommandWithContext(ctx context.Context, args ...interface{}) (interface{}, error) {
-	if m.cmd == nil {
-		if !m.waitReady() {
-			return nil, errors.New("mpv: not running")
-		}
+	switch m.state {
+	case stateStopped:
+		return nil, errors.New("mpv: not running")
+	case stateExited:
+		return nil, errors.New("mpv: exited")
+	case stateStarting:
+		return nil, errors.New("mpv: starting")
 	}
 
 	m.mtx.Lock()
@@ -264,6 +274,20 @@ func (m *MPV) CommandWithContext(ctx context.Context, args ...interface{}) (inte
 
 func (m *MPV) Command(args ...interface{}) (interface{}, error) {
 	return m.CommandWithContext(context.Background(), args...)
+}
+
+func (m *MPV) SetupCommand(args ...interface{}) error {
+	if m.state != stateStopped && m.state != stateExited {
+		if _, err := m.Command(args...); err != nil {
+			return err
+		}
+	}
+
+	m.mtx.Lock()
+	m.setupCommands = append(m.setupCommands, args)
+	m.mtx.Unlock()
+
+	return nil
 }
 
 func (m *MPV) GetProperty(name string) (interface{}, error) {

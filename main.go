@@ -220,7 +220,9 @@ func main() {
 	check(src.SetParameter("entry", entry))
 	check(src.SetParameter("recursive", frecursive))
 
+	hsrc := src
 	if src.IsSingleItem() {
+		hsrc = nil
 		fstart = true
 		exit = true
 	}
@@ -286,7 +288,7 @@ func main() {
 
 	check(m.Start())
 
-	check(handlers.RegisterHandlers(dev, m, src, loadNextFile, func(b *b8.Button) error {
+	check(handlers.RegisterHandlers(dev, m, hsrc, loadNextFile, func(b *b8.Button) error {
 		exit = true
 		_, err := m.Command("quit")
 		return err

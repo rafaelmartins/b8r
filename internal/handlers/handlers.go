@@ -164,12 +164,10 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 			},
 			nil,
 			func(b *b8.Button) error {
-				if cntInt, err := m.GetProperty("playlist-count"); err == nil {
-					if cnt, ok := cntInt.(float64); ok && cnt == 0 && exit != nil {
-						return exit(b)
-					}
+				if exit != nil {
+					return exit(b)
 				}
-				_, err := m.Command("stop")
+				_, err := m.Command("quit")
 				return err
 			},
 			nil,

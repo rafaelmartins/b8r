@@ -134,12 +134,20 @@ type Argument struct {
 	Name              string
 	Help              string
 	Required          bool
+	Remaining         bool
 	CompletionHandler ArgumentCompletionFunc
-	value             string
+	value             []string
 	isSet             bool
 }
 
 func (a *Argument) GetValue() string {
+	if l := len(a.value); l > 0 {
+		return a.value[l-1]
+	}
+	return ""
+}
+
+func (a *Argument) GetValues() []string {
 	return a.value
 }
 
@@ -227,11 +235,18 @@ func (c *Cli) completion(argv []string) {
 			}
 		}
 		if !found {
-			for _, a := range c.Arguments {
-				if a != nil && (!a.isSet || a.GetValue() == cur) {
+			for i, a := range c.Arguments {
+				if a == nil {
+					continue
+				}
+				if !a.isSet || a.GetValue() == cur {
 					if a.CompletionHandler != nil {
 						comp = append(comp, a.CompletionHandler(aPrev, cur)...)
 					}
+					break
+				}
+				if i == len(c.Arguments)-1 && a.Remaining && a.CompletionHandler != nil {
+					comp = append(comp, a.CompletionHandler(aPrev, cur)...)
 					break
 				}
 				aPrev = a.GetValue()
@@ -307,9 +322,14 @@ func (c *Cli) parse(argv []string) error {
 			continue
 		}
 
-		if iArg < len(c.Arguments) {
-			if a := c.Arguments[iArg]; a != nil {
-				a.value = arg
+		if lArg := len(c.Arguments); iArg < lArg || c.Arguments[lArg-1].Remaining {
+			idx := iArg
+			if idx >= lArg {
+				idx = lArg - 1
+			}
+
+			if a := c.Arguments[idx]; a != nil {
+				a.value = append(a.value, arg)
 				a.isSet = true
 				iArg++
 			}
@@ -417,7 +437,7 @@ func (c *Cli) usage(full bool, w io.Writer, argv []string) {
 		fmt.Fprintf(w, " [%s]", c.optUsage(opt))
 	}
 
-	for _, arg := range c.Arguments {
+	for i, arg := range c.Arguments {
 		if arg == nil {
 			continue
 		}
@@ -427,6 +447,9 @@ func (c *Cli) usage(full bool, w io.Writer, argv []string) {
 			fmt.Fprint(w, " [")
 		}
 		fmt.Fprint(w, c.argUsage(arg))
+		if i == len(c.Arguments)-1 && arg.Remaining {
+			fmt.Fprint(w, " ...")
+		}
 		if !arg.Required {
 			fmt.Fprint(w, "]")
 		}

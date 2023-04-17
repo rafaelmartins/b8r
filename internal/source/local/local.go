@@ -64,11 +64,8 @@ func rel(base string, target string) (string, error) {
 
 func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, error) {
 	ent := append([]string{}, entries...)
-	single := false
 	if l := len(ent); l == 0 {
 		ent = append(ent, ".")
-	} else if l == 1 {
-		single = true
 	}
 
 	f.root = commonRoot(ent)
@@ -80,7 +77,6 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 			return nil, false, err
 		}
 		if info.IsDir() {
-			single = false
 			root := true
 
 			if err := filepath.WalkDir(entry, func(path string, d fs.DirEntry, err error) error {
@@ -127,11 +123,9 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 			rv = append(rv, e)
 			continue
 		}
-
-		single = false
 	}
 
-	return rv, single, nil
+	return rv, len(entries) == 1 && len(rv) == 1 && filepath.Clean(entries[0]) == filepath.Join(f.root, rv[0]), nil
 }
 
 func (f *LocalSource) GetFile(key string) (string, error) {

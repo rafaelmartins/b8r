@@ -8,7 +8,9 @@ import (
 	"github.com/rafaelmartins/b8r/internal/mime"
 )
 
-type LocalSource struct{}
+type LocalSource struct {
+	root string
+}
 
 func (f *LocalSource) Name() string {
 	return "local"
@@ -16,6 +18,44 @@ func (f *LocalSource) Name() string {
 
 func (f *LocalSource) Remote() bool {
 	return false
+}
+
+func commonRoot(dirs []string) string {
+	common := ""
+	for i, d := range dirs {
+		dir := filepath.Clean(d)
+		if i == 0 {
+			common = dir
+			continue
+		}
+
+		for j, r := range dir {
+			found := false
+			for k, v := range common {
+				if j == k && r == v {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			common = common[:j]
+			break
+		}
+	}
+	if common == "" {
+		return ""
+	}
+	return filepath.Clean(common)
+}
+
+func rel(base string, target string) (string, error) {
+	if base == "" {
+		return target, nil
+	}
+
+	return filepath.Rel(base, target)
 }
 
 func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, error) {
@@ -26,6 +66,8 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 	} else if l == 1 {
 		single = true
 	}
+
+	f.root = commonRoot(ent)
 
 	rv := []string{}
 	for _, entry := range ent {
@@ -59,7 +101,11 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 				}
 
 				if info.Mode().IsRegular() {
-					rv = append(rv, path)
+					e, err := rel(f.root, path)
+					if err != nil {
+						return err
+					}
+					rv = append(rv, e)
 				}
 
 				return nil
@@ -70,7 +116,11 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 		}
 
 		if info.Mode().IsRegular() {
-			rv = append(rv, entry)
+			e, err := rel(f.root, entry)
+			if err != nil {
+				return nil, false, err
+			}
+			rv = append(rv, e)
 			continue
 		}
 
@@ -81,7 +131,7 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 }
 
 func (f *LocalSource) GetFile(key string) (string, error) {
-	return key, nil
+	return filepath.Join(f.root, key), nil
 }
 
 func (f *LocalSource) GetMimeType(key string) (string, error) {

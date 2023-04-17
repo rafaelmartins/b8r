@@ -118,7 +118,7 @@ var (
 )
 
 func loadNextFile(m *mpv.MPV, src *source.Source) error {
-	next, err := src.Pop()
+	next, err := src.NextEntry()
 	if err != nil {
 		return err
 	}
@@ -215,26 +215,23 @@ func main() {
 		fexclude = oExclude.GetValue()
 	}
 
-	src, err := source.New(srcName, frand, finclude, fexclude)
+	src, err := source.New(srcName)
 	check(err)
 
-	check(src.SetParameter("entry", entry))
-	check(src.SetParameter("recursive", frecursive))
+	singleEntry, err := src.SetEntries(entries, frecursive, frand, finclude, fexclude)
+	check(err)
 
 	hsrc := src
-	if src.IsSingleItem() {
+	if singleEntry {
 		hsrc = nil
 		fstart = true
 		exit = true
 	}
 
 	if oDump.GetValue() {
-		entries, err := src.List()
-		check(err)
-
-		for _, e := range entries {
+		check(src.ForEachEntry(func(e string) {
 			fmt.Println(e)
-		}
+		}))
 		return
 	}
 

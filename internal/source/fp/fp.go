@@ -2,15 +2,13 @@ package fp
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 
-	"github.com/rafaelmartins/b8r/internal/dataset"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,56 +21,17 @@ type filedata struct {
 	Mimetype string `json:"mimetype"`
 }
 
-type FpSource struct {
-	mtx        sync.Mutex
-	entry      string
-	config     *config
-	cache      *dataset.DataSet
-	singleItem bool
-}
+type FpSource struct{}
 
 func (f *FpSource) Name() string {
 	return "fp"
 }
 
-func (f *FpSource) PreFilterMimeType() bool {
-	return false
-}
-
-func (f *FpSource) IsSingleItem() bool {
-	return f.singleItem
-}
-
-func (f *FpSource) SetParameter(key string, value interface{}) error {
-	switch key {
-	case "entry":
-		v, ok := value.(string)
-		if !ok {
-			return errors.New("fp: entry must be a string")
-		}
-
-		cfg, err := f.getConfig()
-		if err != nil {
-			return err
-		}
-
-		f.mtx.Lock()
-		defer f.mtx.Unlock()
-
-		if v != "" {
-			_, f.singleItem = cfg.Aliases[v]
-		}
-		f.entry = v
-	}
-
-	return nil
+func (f *FpSource) Remote() bool {
+	return true
 }
 
 func (f *FpSource) getConfig() (*config, error) {
-	if f.config != nil {
-		return f.config, nil
-	}
-
 	fn, ok := os.LookupEnv("FP_CONFIG")
 	if !ok {
 		u, err := user.Current()
@@ -93,35 +52,29 @@ func (f *FpSource) getConfig() (*config, error) {
 	if err := yaml.NewDecoder(fp).Decode(cfg); err != nil {
 		return nil, err
 	}
-
-	f.mtx.Lock()
-	defer f.mtx.Unlock()
-
-	f.config = cfg
-
 	return cfg, nil
 }
 
-func (f *FpSource) List() ([]string, error) {
+func (f *FpSource) List(entries []string, recursive bool) ([]string, bool, error) {
 	cfg, err := f.getConfig()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	f.mtx.Lock()
-	defer f.mtx.Unlock()
-
-	f.cache = dataset.New()
-
-	if f.entry == "" {
-		for entry := range cfg.Aliases {
-			f.cache.Add(entry)
+	rv := []string{}
+	if len(entries) == 0 {
+		for k := range cfg.Aliases {
+			rv = append(rv, k)
 		}
-	} else if _, ok := cfg.Aliases[f.entry]; ok {
-		f.cache.Add(f.entry)
+		return rv, false, nil
 	}
 
-	return f.cache.Slice(), nil
+	for _, entry := range entries {
+		if _, found := cfg.Aliases[entry]; !found {
+			return nil, false, fmt.Errorf("fp: invalid entry: %s", entry)
+		}
+	}
+	return entries, len(entries) == 1, nil
 }
 
 func (f *FpSource) GetFile(key string) (string, error) {
@@ -130,17 +83,10 @@ func (f *FpSource) GetFile(key string) (string, error) {
 		return "", err
 	}
 
-	f.mtx.Lock()
-	defer f.mtx.Unlock()
-
-	if !f.cache.Contains(key) {
-		return "", errors.New("fp: invalid alias")
-	}
-
 	if url, ok := cfg.Aliases[key]; ok {
 		return url, nil
 	}
-	return "", errors.New("fp: invalid alias")
+	return "", fmt.Errorf("fp: invalid entry: %s", key)
 }
 
 func (f *FpSource) GetMimeType(key string) (string, error) {

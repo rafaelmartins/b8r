@@ -2,24 +2,19 @@ package source
 
 import (
 	"errors"
-	"math/rand"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
+	"github.com/rafaelmartins/b8r/internal/dataset"
 	"github.com/rafaelmartins/b8r/internal/source/fp"
 	"github.com/rafaelmartins/b8r/internal/source/local"
 )
 
-var errSkip = errors.New("source: skip")
-
 type SourceBackend interface {
 	Name() string
-	PreFilterMimeType() bool
-	IsSingleItem() bool
-	SetParameter(key string, value interface{}) error
-	List() ([]string, error)
+	Remote() bool
+	List(entries []string, recursive bool) ([]string, bool, error)
 	GetFile(key string) (string, error)
 	GetMimeType(key string) (string, error)
 	CompletionHandler(prev string, cur string) []string
@@ -31,11 +26,8 @@ var registry = []SourceBackend{
 }
 
 type Source struct {
-	backend   SourceBackend
-	items     []string
-	randomize bool
-	include   *regexp.Regexp
-	exclude   *regexp.Regexp
+	backend SourceBackend
+	entries *dataset.DataSet
 }
 
 func List() []string {
@@ -55,7 +47,7 @@ func CompletionHandler(prev string, cur string) []string {
 	return nil
 }
 
-func New(name string, randomize bool, include string, exclude string) (*Source, error) {
+func New(name string) (*Source, error) {
 	var backend SourceBackend
 	for _, r := range registry {
 		if r.Name() == name {
@@ -63,30 +55,28 @@ func New(name string, randomize bool, include string, exclude string) (*Source, 
 			break
 		}
 	}
+
 	if backend == nil {
 		return nil, errors.New("source: not found")
 	}
 
-	i, err := regexp.Compile(include)
-	if err != nil {
-		return nil, err
-	}
-
-	e, err := regexp.Compile(exclude)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Source{
-		backend:   backend,
-		randomize: randomize,
-		include:   i,
-		exclude:   e,
+		backend: backend,
 	}, nil
 }
 
-func (s *Source) SetParameter(key string, value interface{}) error {
-	return s.backend.SetParameter(key, value)
+func toInclude(r *regexp.Regexp, e string) bool {
+	if r == nil {
+		return true
+	}
+	return r.MatchString(e)
+}
+
+func toExclude(r *regexp.Regexp, e string) bool {
+	if r == nil {
+		return false
+	}
+	return r.MatchString(e)
 }
 
 func (s *Source) isMimeTypeSupported(key string) bool {
@@ -98,89 +88,55 @@ func (s *Source) isMimeTypeSupported(key string) bool {
 	return strings.HasPrefix(mt, "image/") || strings.HasPrefix(mt, "video/")
 }
 
-func (s *Source) toInclude(e string) bool {
-	if s.include == nil {
-		return true
+func (s *Source) SetEntries(entries []string, recursive bool, randomize bool, include string, exclude string) (bool, error) {
+	if s.entries != nil {
+		return false, errors.New("source: entries already set")
 	}
-	return s.include.MatchString(e)
-}
 
-func (s *Source) toExclude(e string) bool {
-	if s.exclude == nil {
-		return false
-	}
-	return s.exclude.MatchString(e)
-}
-
-func (s *Source) IsSingleItem() bool {
-	return s.backend.IsSingleItem()
-}
-
-func (s *Source) List() ([]string, error) {
-	lr, err := s.backend.List()
+	inc, err := regexp.Compile(include)
 	if err != nil {
-		return nil, err
+		return false, err
+	}
+
+	exc, err := regexp.Compile(exclude)
+	if err != nil {
+		return false, err
+	}
+
+	lr, single, err := s.backend.List(entries, recursive)
+	if err != nil {
+		return false, err
 	}
 
 	sort.Strings(lr)
 
 	l := []string{}
 
-	if s.backend.IsSingleItem() {
-		l = append(l, lr...)
-	} else {
-		for _, v := range lr {
-			if s.toInclude(v) && !s.toExclude(v) && !(s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(v)) {
-				l = append(l, v)
-			}
-		}
-
-		if s.randomize {
-			rand.Seed(time.Now().UnixNano())
-			rand.Shuffle(len(l), func(i int, j int) {
-				l[i], l[j] = l[j], l[i]
-			})
+	for _, v := range lr {
+		if toInclude(inc, v) && !toExclude(exc, v) && (s.backend.Remote() || s.isMimeTypeSupported(v)) {
+			l = append(l, v)
 		}
 	}
 
-	return l, nil
+	s.entries = dataset.New(l, randomize)
+	if s.entries.Len() == 0 {
+		return false, errors.New("source: failed to retrieve entries")
+	}
+	return single, nil
 }
 
-func (s *Source) pop() (string, error) {
-	if s.items == nil || len(s.items) == 0 {
-		items, err := s.List()
-		if err != nil {
-			return "", err
-		}
-
-		if len(items) == 0 {
-			return "", errors.New("source: failed to retrieve items")
-		}
-
-		s.items = items
+func (s *Source) NextEntry() (string, error) {
+	if s.entries != nil {
+		return s.entries.Next()
 	}
-
-	var pop string
-	pop, s.items = s.items[0], s.items[1:]
-
-	if !s.backend.PreFilterMimeType() && !s.isMimeTypeSupported(pop) {
-		return "", errSkip
-	}
-
-	return pop, nil
+	return "", errors.New("source: entries not set")
 }
 
-func (s *Source) Pop() (string, error) {
-	for {
-		p, err := s.pop()
-		if err == nil {
-			return p, nil
-		}
-
-		if err != errSkip {
-			return "", err
-		}
+func (s *Source) ForEachEntry(f func(e string)) error {
+	if s.entries != nil {
+		return s.entries.ForEach(f)
 	}
+	return errors.New("source: entries not set")
 }
 
 func (s *Source) GetFile(key string) (string, error) {

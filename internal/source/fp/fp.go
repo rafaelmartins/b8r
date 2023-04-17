@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/danwakefield/fnmatch"
 	"gopkg.in/yaml.v3"
 )
 
@@ -61,20 +62,29 @@ func (f *FpSource) List(entries []string, recursive bool) ([]string, bool, error
 		return nil, false, err
 	}
 
-	rv := []string{}
-	if len(entries) == 0 {
-		for k := range cfg.Aliases {
-			rv = append(rv, k)
-		}
-		return rv, false, nil
+	all := []string{}
+	for k := range cfg.Aliases {
+		all = append(all, k)
 	}
 
+	if len(entries) == 0 {
+		return all, false, nil
+	}
+
+	rv := []string{}
 	for _, entry := range entries {
-		if _, found := cfg.Aliases[entry]; !found {
+		found := false
+		for _, a := range all {
+			if fnmatch.Match(entry, a, 0) {
+				found = true
+				rv = append(rv, a)
+			}
+		}
+		if !found {
 			return nil, false, fmt.Errorf("fp: invalid entry: %s", entry)
 		}
 	}
-	return entries, len(entries) == 1, nil
+	return rv, len(entries) == 1 && len(rv) == 1 && entries[0] == rv[0], nil
 }
 
 func (f *FpSource) GetFile(key string) (string, error) {

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rafaelmartins/b8r/internal/mime"
 )
@@ -46,6 +47,9 @@ func commonRoot(dirs []string) string {
 	}
 	if common == "" {
 		return ""
+	}
+	if common != "/" && !strings.HasSuffix(common, "/") {
+		common = filepath.Dir(common)
 	}
 	return filepath.Clean(common)
 }

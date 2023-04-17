@@ -269,6 +269,9 @@ func main() {
 		if err := mp.SetProperty("mute", fmute); err != nil {
 			return err
 		}
+		if _, err := m.Command("vf", "remove", "hflip"); err != nil {
+			return err
+		}
 		if err := mp.SetProperty("video-align-x", 0); err != nil {
 			return err
 		}

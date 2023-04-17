@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -128,7 +129,7 @@ func loadNextFile(m *mpv.MPV, src *source.Source) error {
 		return err
 	}
 
-	if err := m.SetProperty("osd-playing-msg", next); err != nil {
+	if err := m.SetProperty("osd-playing-msg", filepath.ToSlash(next)); err != nil {
 		return err
 	}
 	if err := m.SetProperty("pause", true); err != nil {

@@ -10,15 +10,15 @@ import (
 )
 
 type Preset struct {
-	Name      string  `yaml:"name"`
-	Source    string  `yaml:"source"`
-	Include   *string `yaml:"include"`
-	Exclude   *string `yaml:"exclude"`
-	Entry     *string `yaml:"entry"`
-	Mute      *bool   `yaml:"mute"`
-	Random    *bool   `yaml:"random"`
-	Recursive *bool   `yaml:"recursive"`
-	Start     *bool   `yaml:"start"`
+	Name      string   `yaml:"name"`
+	Source    string   `yaml:"source"`
+	Include   *string  `yaml:"include"`
+	Exclude   *string  `yaml:"exclude"`
+	Entries   []string `yaml:"entries"`
+	Mute      *bool    `yaml:"mute"`
+	Random    *bool    `yaml:"random"`
+	Recursive *bool    `yaml:"recursive"`
+	Start     *bool    `yaml:"start"`
 }
 
 type Presets []*Preset

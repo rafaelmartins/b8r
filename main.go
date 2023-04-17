@@ -89,6 +89,7 @@ var (
 	aEntry = &cli.Argument{
 		Name:              "entry",
 		Required:          false,
+		Remaining:         true,
 		Help:              "item or collection to load (requires a source. if item, forces -s, ignores -i -e)",
 		CompletionHandler: source.CompletionHandler,
 	}
@@ -157,7 +158,7 @@ func main() {
 	check(err)
 
 	srcName := ""
-	entry := ""
+	entries := []string{}
 	fmute := oMute.Default
 	frand := oRand.Default
 	frecursive := oRecursive.Default
@@ -167,8 +168,8 @@ func main() {
 
 	if p := pr.Get(aPresetOrSource.GetValue()); p != nil {
 		srcName = p.Source
-		if p.Entry != nil {
-			entry = *p.Entry
+		if p.Entries != nil {
+			entries = p.Entries
 		}
 		if p.Mute != nil {
 			fmute = *p.Mute
@@ -191,7 +192,7 @@ func main() {
 	} else {
 		srcName = aPresetOrSource.GetValue()
 		if aEntry.IsSet() {
-			entry = aEntry.GetValue()
+			entries = aEntry.GetValues()
 		}
 	}
 

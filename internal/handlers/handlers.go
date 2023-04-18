@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"math"
+	"path/filepath"
 	"time"
 
 	"github.com/rafaelmartins/b8/go/b8"
@@ -25,9 +28,10 @@ var (
 		keySeek60Fwd: "seek 60",
 		keySeek60Bwd: "seek -60",
 	}
-)
 
-type LoadNextFunc func(m *mpv.MPV, src *source.Source) error
+	waitingPlayback = false
+	playing         = ""
+)
 
 func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, modShort b8.ButtonHandler, modLong b8.ButtonHandler) b8.ButtonHandler {
 	return func(b *b8.Button) error {
@@ -106,14 +110,56 @@ func b8HoldKeyHandler(m *mpv.MPV, key string, modKey string) b8.ButtonHandler {
 	}
 }
 
-func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext LoadNextFunc, exit b8.ButtonHandler) error {
+func LoadNextFile(m *mpv.MPV, src *source.Source) error {
+	if m == nil {
+		return errors.New("handlers: missing mpv")
+	}
+	if src == nil {
+		return errors.New("handlers: missing source")
+	}
+
+	next, err := src.NextEntry()
+	if err != nil {
+		return err
+	}
+
+	file, err := src.GetFile(next)
+	if err != nil {
+		return err
+	}
+
+	if err := m.SetProperty("osd-playing-msg", filepath.ToSlash(next)); err != nil {
+		return err
+	}
+	if err := m.SetProperty("pause", true); err != nil {
+		return err
+	}
+	if err := m.SetProperty("fullscreen", true); err != nil {
+		return err
+	}
+
+	waitingPlayback = true
+	playing = next
+
+	_, err = m.Command("loadfile", file)
+	return err
+}
+
+func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.ButtonHandler) error {
+	if dev == nil {
+		return errors.New("handlers: missing device")
+	}
+	if m == nil {
+		return errors.New("handlers: missing mpv")
+	}
+
 	for k, v := range keybinds {
 		if err := m.SetupCommand("keybind", k, v); err != nil {
 			return err
 		}
 	}
 
-	if s != nil {
+	if src != nil {
 		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
 				if pausedInt, err := m.GetProperty("pause"); err == nil {
@@ -124,10 +170,7 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 						return m.SetProperty("fullscreen", true)
 					}
 				}
-				if loadNext != nil {
-					return loadNext(m, s)
-				}
-				return nil
+				return LoadNextFile(m, src)
 			},
 			func(b *b8.Button) error {
 				if err := m.SetProperty("pause", true); err != nil {
@@ -261,4 +304,39 @@ func RegisterHandlers(dev *b8.Device, m *mpv.MPV, s *source.Source, loadNext Loa
 	))
 
 	return nil
+}
+
+func RegisterMPVHandlers(m *mpv.MPV, mute bool) error {
+	if m == nil {
+		return errors.New("handlers: missing mpv")
+	}
+
+	return m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
+		if !waitingPlayback {
+			return nil
+		}
+		waitingPlayback = false
+
+		fmt.Printf("Playing: %s\n", playing)
+
+		if err := mp.SetProperty("mute", mute); err != nil {
+			return err
+		}
+		if _, err := m.Command("vf", "remove", "hflip"); err != nil {
+			return err
+		}
+		if err := mp.SetProperty("video-align-x", 0); err != nil {
+			return err
+		}
+		if err := mp.SetProperty("video-align-y", 0); err != nil {
+			return err
+		}
+		if err := mp.SetProperty("video-rotate", 0); err != nil {
+			return err
+		}
+		if err := mp.SetProperty("video-zoom", 0); err != nil {
+			return err
+		}
+		return mp.SetProperty("pause", false)
+	})
 }

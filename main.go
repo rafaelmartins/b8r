@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -113,38 +112,8 @@ var (
 		},
 	}
 
-	exit            = false
-	waitingPlayback = false
-	playing         = ""
+	exit = false
 )
-
-func loadNextFile(m *mpv.MPV, src *source.Source) error {
-	next, err := src.NextEntry()
-	if err != nil {
-		return err
-	}
-
-	file, err := src.GetFile(next)
-	if err != nil {
-		return err
-	}
-
-	if err := m.SetProperty("osd-playing-msg", filepath.ToSlash(next)); err != nil {
-		return err
-	}
-	if err := m.SetProperty("pause", true); err != nil {
-		return err
-	}
-	if err := m.SetProperty("fullscreen", true); err != nil {
-		return err
-	}
-
-	waitingPlayback = true
-	playing = next
-
-	_, err = m.Command("loadfile", file)
-	return err
-}
 
 func check(err any) {
 	if err != nil {
@@ -259,45 +228,18 @@ func main() {
 	)
 	check(err)
 
-	check(m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
-		if !waitingPlayback {
-			return nil
-		}
-		waitingPlayback = false
-
-		fmt.Printf("Playing: %s\n", playing)
-
-		if err := mp.SetProperty("mute", fmute); err != nil {
-			return err
-		}
-		if _, err := m.Command("vf", "remove", "hflip"); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-align-x", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-align-y", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-rotate", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-zoom", 0); err != nil {
-			return err
-		}
-		return mp.SetProperty("pause", false)
-	}))
+	check(handlers.RegisterMPVHandlers(m, fmute))
 
 	check(m.Start())
 
-	check(handlers.RegisterHandlers(dev, m, hsrc, loadNextFile, func(b *b8.Button) error {
+	check(handlers.RegisterB8Handlers(dev, m, hsrc, func(b *b8.Button) error {
 		exit = true
 		_, err := m.Command("quit")
 		return err
 	}))
 
 	if fstart {
-		check(loadNextFile(m, src))
+		check(handlers.LoadNextFile(m, src))
 	}
 
 	go func() {

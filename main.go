@@ -28,28 +28,28 @@ var (
 	oRand = &cli.BoolOption{
 		Name:    'z',
 		Default: false,
-		Help:    "randomize items",
+		Help:    "randomize entries",
 	}
 	oRecursive = &cli.BoolOption{
 		Name:    'r',
 		Default: false,
-		Help:    "list items recursively",
+		Help:    "list entries recursively",
 	}
 	oStart = &cli.BoolOption{
 		Name:    's',
 		Default: false,
-		Help:    "load first item during startup",
+		Help:    "load first entry during startup",
 	}
 	oInclude = &cli.StringOption{
 		Name:    'i',
 		Default: ".*",
-		Help:    "regex to include all matched items",
+		Help:    "regex to include all matched entries",
 		Metavar: "REGEX",
 	}
 	oExclude = &cli.StringOption{
 		Name:    'e',
 		Default: "$^",
-		Help:    "regex to exclude all matched items (applied after -i)",
+		Help:    "regex to exclude all matched entries (applied after -i)",
 		Metavar: "REGEX",
 	}
 	oSerialNumber = &cli.StringOption{
@@ -86,11 +86,11 @@ var (
 			return rv
 		},
 	}
-	aEntry = &cli.Argument{
+	aEntries = &cli.Argument{
 		Name:              "entry",
 		Required:          false,
 		Remaining:         true,
-		Help:              "item or collection to load (requires a source. if item, forces -s, ignores -i -e)",
+		Help:              "one or more entries to load (requires a source. if only one, forces -s)",
 		CompletionHandler: source.CompletionHandler,
 	}
 
@@ -108,7 +108,7 @@ var (
 		},
 		Arguments: []*cli.Argument{
 			aPresetOrSource,
-			aEntry,
+			aEntries,
 		},
 	}
 
@@ -161,8 +161,8 @@ func main() {
 		}
 	} else {
 		srcName = aPresetOrSource.GetValue()
-		if aEntry.IsSet() {
-			entries = aEntry.GetValues()
+		if aEntries.IsSet() {
+			entries = aEntries.GetValues()
 		}
 	}
 

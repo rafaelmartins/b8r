@@ -137,6 +137,21 @@ func LoadNextFile(m *mpv.MPV, src *source.Source) error {
 	if err := m.SetProperty("fullscreen", true); err != nil {
 		return err
 	}
+	if _, err := m.Command("vf", "remove", "hflip"); err != nil {
+		return err
+	}
+	if err := m.SetProperty("video-align-x", 0); err != nil {
+		return err
+	}
+	if err := m.SetProperty("video-align-y", 0); err != nil {
+		return err
+	}
+	if err := m.SetProperty("video-rotate", 0); err != nil {
+		return err
+	}
+	if err := m.SetProperty("video-zoom", 0); err != nil {
+		return err
+	}
 
 	waitingPlayback = true
 	playing = next
@@ -320,21 +335,6 @@ func RegisterMPVHandlers(m *mpv.MPV, mute bool) error {
 		fmt.Printf("Playing: %s\n", playing)
 
 		if err := mp.SetProperty("mute", mute); err != nil {
-			return err
-		}
-		if _, err := m.Command("vf", "remove", "hflip"); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-align-x", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-align-y", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-rotate", 0); err != nil {
-			return err
-		}
-		if err := mp.SetProperty("video-zoom", 0); err != nil {
 			return err
 		}
 		return mp.SetProperty("pause", false)

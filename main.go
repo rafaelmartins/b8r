@@ -228,10 +228,9 @@ func main() {
 	)
 	check(err)
 
-	check(handlers.RegisterMPVHandlers(m, fmute))
-
 	check(m.Start())
 
+	check(handlers.RegisterMPVHandlers(m, fmute))
 	check(handlers.RegisterB8Handlers(dev, m, hsrc, func(b *b8.Button) error {
 		exit = true
 		_, err := m.Command("quit")

@@ -1,10 +1,10 @@
 package dataset
 
 import (
+	"crypto/rand"
 	"errors"
-	"math/rand"
+	"math/big"
 	"sync"
-	"time"
 )
 
 var (
@@ -16,8 +16,8 @@ var (
 type DataSet struct {
 	mtx       sync.RWMutex
 	items     []string
+	citems    []string
 	randomize bool
-	idx       int
 }
 
 func (d *DataSet) contains(v string) bool {
@@ -29,15 +29,6 @@ func (d *DataSet) contains(v string) bool {
 	return false
 }
 
-func (d *DataSet) rand() {
-	if d.randomize && len(d.items) > 0 {
-		rand.Seed(time.Now().UnixNano())
-		rand.Shuffle(len(d.items), func(i int, j int) {
-			d.items[i], d.items[j] = d.items[j], d.items[i]
-		})
-	}
-}
-
 func New(items []string, randomize bool) *DataSet {
 	rv := &DataSet{
 		randomize: randomize,
@@ -47,7 +38,6 @@ func New(items []string, randomize bool) *DataSet {
 			rv.items = append(rv.items, item)
 		}
 	}
-	rv.rand()
 	return rv
 }
 
@@ -57,20 +47,35 @@ func (d *DataSet) Len() int {
 	return len(d.items)
 }
 
+func (d *DataSet) next() (string, error) {
+	if len(d.items) == 0 {
+		return "", ErrEmpty
+	}
+
+	if len(d.citems) == 0 {
+		d.citems = append(d.citems, d.items...)
+	}
+
+	idx := 0
+	if d.randomize {
+		bidx, err := rand.Int(rand.Reader, big.NewInt(int64(len(d.citems))))
+		if err != nil {
+			return "", err
+		}
+
+		idx = int(bidx.Int64())
+	}
+
+	v := d.citems[idx]
+	d.citems = append(d.citems[:idx], d.citems[idx+1:]...)
+	return v, nil
+}
+
 func (d *DataSet) Next() (string, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	if len(d.items) == 0 {
-		return "", ErrEmpty
-	}
-	v := d.items[d.idx]
-	d.idx++
-	if d.idx >= len(d.items) {
-		d.idx = 0
-		d.rand()
-	}
-	return v, nil
+	return d.next()
 }
 
 func (d *DataSet) ForEach(f func(e string)) error {
@@ -78,11 +83,21 @@ func (d *DataSet) ForEach(f func(e string)) error {
 		return ErrInvalidCallback
 	}
 
-	d.mtx.RLock()
-	defer d.mtx.RUnlock()
+	d.mtx.Lock()
+	defer d.mtx.Unlock()
 
-	for _, item := range d.items {
-		f(item)
+	if len(d.items) == 0 {
+		return nil
 	}
+
+	for i := 0; i < len(d.items); i++ {
+		next, err := d.next()
+		if err != nil {
+			return err
+		}
+
+		f(next)
+	}
+
 	return nil
 }

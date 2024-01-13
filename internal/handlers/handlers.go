@@ -140,6 +140,9 @@ func LoadNextFile(m *mpv.MPV, src *source.Source) error {
 	if _, err := m.Command("vf", "remove", "hflip"); err != nil {
 		return err
 	}
+	if _, err := m.Command("vf", "remove", "vflip"); err != nil {
+		return err
+	}
 	if err := m.SetProperty("video-align-x", 0); err != nil {
 		return err
 	}
@@ -240,7 +243,17 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 			return m.CyclePropertyValues("video-rotate", "90", "180", "270", "0")
 		},
 		func(b *b8.Button) error {
-			_, err := m.Command("vf", "toggle", "hflip")
+			rotate, err := m.GetProperty("video-dec-params/rotate")
+			if err != nil {
+				return err
+			}
+
+			flip := "hflip"
+			if r := rotate.(float64); r == 90 || r == 270 {
+				flip = "vflip"
+			}
+
+			_, err = m.Command("vf", "toggle", flip)
 			return err
 		},
 		nil,

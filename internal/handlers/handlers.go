@@ -180,13 +180,11 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 	if src != nil {
 		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
-				if pausedInt, err := m.GetProperty("pause"); err == nil {
-					if p, ok := pausedInt.(bool); ok && p {
-						if err := m.SetProperty("pause", false); err != nil {
-							return err
-						}
-						return m.SetProperty("fullscreen", true)
+				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
+					if err := m.SetProperty("pause", false); err != nil {
+						return err
 					}
+					return m.SetProperty("fullscreen", true)
 				}
 				return LoadNextFile(m, src)
 			},
@@ -197,10 +195,8 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 				return m.SetProperty("fullscreen", false)
 			},
 			func(b *b8.Button) error {
-				if cntInt, err := m.GetProperty("playlist-count"); err == nil {
-					if cnt, ok := cntInt.(float64); ok && cnt == 0 && exit != nil {
-						return exit(b)
-					}
+				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 && exit != nil {
+					return exit(b)
 				}
 				_, err := m.Command("stop")
 				return err
@@ -210,13 +206,11 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 	} else {
 		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
-				if pausedInt, err := m.GetProperty("pause"); err == nil {
-					if p, ok := pausedInt.(bool); ok && p {
-						if err := m.SetProperty("pause", false); err != nil {
-							return err
-						}
-						return m.SetProperty("fullscreen", true)
+				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
+					if err := m.SetProperty("pause", false); err != nil {
+						return err
 					}
+					return m.SetProperty("fullscreen", true)
 				}
 				if err := m.SetProperty("pause", true); err != nil {
 					return err
@@ -243,13 +237,13 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 			return m.CyclePropertyValues("video-rotate", "90", "180", "270", "0")
 		},
 		func(b *b8.Button) error {
-			rotate, err := m.GetProperty("video-dec-params/rotate")
+			rotate, err := m.GetPropertyInt("video-dec-params/rotate")
 			if err != nil {
 				return err
 			}
 
 			flip := "hflip"
-			if r := rotate.(float64); r == 90 || r == 270 {
+			if rotate == 90 || rotate == 270 {
 				flip = "vflip"
 			}
 
@@ -270,11 +264,11 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 
 	dev.AddHandler(b8.BUTTON_6, b8Handler(dev,
 		func(b *b8.Button) error {
-			data, err := m.GetProperty("video-zoom")
+			data, err := m.GetPropertyFloat64("video-zoom")
 			if err != nil {
 				return err
 			}
-			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data.(float64))*1.25))
+			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data)*1.25))
 		},
 		func(b *b8.Button) error {
 			if _, err := m.Command("vf", "remove", "hflip"); err != nil {
@@ -292,11 +286,11 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 			return m.SetProperty("video-zoom", 0)
 		},
 		func(b *b8.Button) error {
-			data, err := m.GetProperty("video-zoom")
+			data, err := m.GetPropertyFloat64("video-zoom")
 			if err != nil {
 				return err
 			}
-			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data.(float64))/1.25))
+			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data)/1.25))
 		},
 		nil,
 	))

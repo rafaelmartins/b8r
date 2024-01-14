@@ -294,6 +294,54 @@ func (m *MPV) GetProperty(name string) (interface{}, error) {
 	return m.Command("get_property", name)
 }
 
+func (m *MPV) GetPropertyBool(name string) (bool, error) {
+	rv, err := m.GetProperty(name)
+	if err != nil {
+		return false, err
+	}
+
+	if v, ok := rv.(bool); ok {
+		return v, nil
+	}
+	return false, errors.New("mpv: returned property value is not a boolean")
+}
+
+func (m *MPV) GetPropertyFloat64(name string) (float64, error) {
+	rv, err := m.GetProperty(name)
+	if err != nil {
+		return 0, err
+	}
+
+	if v, ok := rv.(float64); ok {
+		return v, nil
+	}
+	return 0, errors.New("mpv: returned property value is not a float64")
+}
+
+func (m *MPV) GetPropertyInt(name string) (int, error) {
+	rv, err := m.GetProperty(name)
+	if err != nil {
+		return 0, err
+	}
+
+	if v, ok := rv.(float64); ok {
+		return int(v), nil
+	}
+	return 0, errors.New("mpv: returned property value is not an integer")
+}
+
+func (m *MPV) GetPropertyString(name string) (string, error) {
+	rv, err := m.GetProperty(name)
+	if err != nil {
+		return "", err
+	}
+
+	if v, ok := rv.(string); ok {
+		return v, nil
+	}
+	return "", errors.New("mpv: returned property value is not a string")
+}
+
 func (m *MPV) SetProperty(name string, value interface{}) error {
 	_, err := m.Command("set_property", name, value)
 	return err

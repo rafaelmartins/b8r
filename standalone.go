@@ -238,10 +238,7 @@ func standalone() {
 	}()
 
 	check(handlers.RegisterMPVHandlers(c, fmute))
-	check(handlers.RegisterB8Handlers(dev, c, hsrc, func(b *b8.Button) error {
-		_, err := c.Command("quit")
-		return err
-	}))
+	check(handlers.RegisterB8Handlers(dev, c, hsrc))
 
 	if fstart {
 		check(handlers.LoadNextFile(c, src))

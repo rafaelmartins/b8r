@@ -163,7 +163,7 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	return err
 }
 
-func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Source, exit b8.ButtonHandler) error {
+func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Source) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -195,8 +195,9 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 				return m.SetProperty("fullscreen", false)
 			},
 			func(b *b8.Button) error {
-				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 && exit != nil {
-					return exit(b)
+				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 {
+					_, err := m.Command("quit")
+					return err
 				}
 				_, err := m.Command("stop")
 				return err
@@ -219,9 +220,6 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 			},
 			nil,
 			func(b *b8.Button) error {
-				if exit != nil {
-					return exit(b)
-				}
 				_, err := m.Command("quit")
 				return err
 			},

@@ -46,8 +46,7 @@ func plugin(fd uintptr) {
 
 	dev, err := b8.GetDevice("")
 	if err == nil {
-		err = dev.Open()
-		if err == nil {
+		if err = dev.Open(); err == nil {
 			defer func() {
 				dev.Led(b8.LedOff)
 				dev.Close()
@@ -58,12 +57,7 @@ func plugin(fd uintptr) {
 				time.Sleep(100 * time.Millisecond)
 			}
 
-			err = handlers.RegisterB8Handlers(dev, m, nil, func(b *b8.Button) error {
-				_, err := m.Command("quit")
-				return err
-			})
-
-			if err == nil {
+			if err = handlers.RegisterB8Handlers(dev, m, nil); err == nil {
 				go func() {
 					check(dev.Listen(), false)
 				}()

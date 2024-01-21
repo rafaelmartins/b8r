@@ -1,13 +1,12 @@
-package mpv
+package server
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 )
 
-func ipcServerName(id string) string {
+func getSocket(id string) string {
 	if id == "" {
 		id = "UNK"
 	}
@@ -16,8 +15,4 @@ func ipcServerName(id string) string {
 		dir = "/tmp"
 	}
 	return filepath.Join(dir, fmt.Sprintf("b8r-mpv-%s.socket", id))
-}
-
-func dial(id string) (net.Conn, error) {
-	return net.Dial("unix", ipcServerName(id))
 }

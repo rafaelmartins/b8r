@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/rafaelmartins/b8/go/b8"
-	"github.com/rafaelmartins/b8r/internal/mpv"
+	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/source"
 )
 
@@ -94,7 +94,7 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 	}
 }
 
-func b8HoldKeyHandler(m *mpv.MPV, key string, modKey string) b8.ButtonHandler {
+func b8HoldKeyHandler(m *client.MpvIpcClient, key string, modKey string) b8.ButtonHandler {
 	return func(b *b8.Button) error {
 		k := key
 		if mod.Pressed() {
@@ -110,7 +110,7 @@ func b8HoldKeyHandler(m *mpv.MPV, key string, modKey string) b8.ButtonHandler {
 	}
 }
 
-func LoadNextFile(m *mpv.MPV, src *source.Source) error {
+func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	if m == nil {
 		return errors.New("handlers: missing mpv")
 	}
@@ -163,7 +163,7 @@ func LoadNextFile(m *mpv.MPV, src *source.Source) error {
 	return err
 }
 
-func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.ButtonHandler) error {
+func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Source, exit b8.ButtonHandler) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -172,7 +172,7 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 	}
 
 	for k, v := range keybinds {
-		if err := m.SetupCommand("keybind", k, v); err != nil {
+		if _, err := m.Command("keybind", k, v); err != nil {
 			return err
 		}
 	}
@@ -328,12 +328,12 @@ func RegisterB8Handlers(dev *b8.Device, m *mpv.MPV, src *source.Source, exit b8.
 	return nil
 }
 
-func RegisterMPVHandlers(m *mpv.MPV, mute bool) error {
+func RegisterMPVHandlers(m *client.MpvIpcClient, mute bool) error {
 	if m == nil {
-		return errors.New("handlers: missing mpv")
+		return errors.New("handlers: missing mpv ipc client")
 	}
 
-	return m.AddHandler("playback-restart", func(mp *mpv.MPV, event string, data map[string]interface{}) error {
+	m.AddHandler("playback-restart", func(mp *client.MpvIpcClient, event string, data map[string]interface{}) error {
 		if !waitingPlayback {
 			return nil
 		}
@@ -346,4 +346,6 @@ func RegisterMPVHandlers(m *mpv.MPV, mute bool) error {
 		}
 		return mp.SetProperty("pause", false)
 	})
+
+	return nil
 }

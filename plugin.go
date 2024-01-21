@@ -36,13 +36,20 @@ func plugin(fd uintptr) {
 		if err != nil {
 			fmt.Println("[b8r]", err)
 			if fatal {
-				os.Exit(0)
+				os.Exit(1)
 			}
 		}
 	}
 
 	m, err := client.NewFromFd(fd)
 	check(err, true)
+
+	// according to documentation, mpv is supposed to send a shutdown event when closing.
+	// i never saw it happening (mpv just sends an EOF in the fd), but lets support it.
+	m.AddHandler("shutdown", func(m *client.MpvIpcClient, event string, data map[string]interface{}) error {
+		os.Exit(0)
+		return nil
+	})
 
 	wait := make(chan bool)
 	go func() {

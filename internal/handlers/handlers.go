@@ -207,16 +207,27 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 	} else {
 		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
 			func(b *b8.Button) error {
-				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
-					if err := m.SetProperty("pause", false); err != nil {
-						return err
+				if paused, err := m.GetPropertyBool("pause"); err == nil {
+					if paused {
+						if err := m.SetProperty("fullscreen", true); err != nil {
+							return err
+						}
+						return m.SetProperty("pause", false)
 					}
-					return m.SetProperty("fullscreen", true)
-				}
-				if err := m.SetProperty("pause", true); err != nil {
+				} else {
 					return err
 				}
-				return m.SetProperty("fullscreen", false)
+
+				if fs, err := m.GetPropertyBool("fullscreen"); err == nil {
+					if fs {
+						if err := m.SetProperty("pause", true); err != nil {
+							return err
+						}
+					}
+					return m.SetProperty("fullscreen", !fs)
+				} else {
+					return err
+				}
 			},
 			nil,
 			func(b *b8.Button) error {

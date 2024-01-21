@@ -44,6 +44,12 @@ func plugin(fd uintptr) {
 	m, err := client.NewFromFd(fd)
 	check(err, true)
 
+	wait := make(chan bool)
+	go func() {
+		check(m.Listen(nil), true)
+		wait <- true
+	}()
+
 	dev, err := b8.GetDevice("")
 	if err == nil {
 		if err = dev.Open(); err == nil {
@@ -66,7 +72,6 @@ func plugin(fd uintptr) {
 	}
 	check(err, false)
 
-	check(m.Listen(nil), true)
-
+	<-wait
 	os.Exit(0)
 }

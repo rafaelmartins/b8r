@@ -80,5 +80,4 @@ func plugin(fd uintptr) {
 	check(err, false)
 
 	<-wait
-	os.Exit(0)
 }

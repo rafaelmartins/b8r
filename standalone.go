@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -249,6 +248,4 @@ func standalone() {
 	}()
 
 	check(s.Wait())
-
-	os.Exit(0)
 }

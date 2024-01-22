@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -32,9 +32,12 @@ func calledAsPlugin() (bool, uintptr) {
 }
 
 func plugin(fd uintptr) {
+	log.SetPrefix("[b8r] ")
+	log.SetFlags(0)
+
 	check := func(err any, fatal bool) {
 		if err != nil {
-			fmt.Println("[b8r]", err)
+			log.Print(err)
 			if fatal {
 				os.Exit(1)
 			}

@@ -198,10 +198,11 @@ func (m *MpvIpcClient) CommandWithContext(ctx context.Context, args ...interface
 			return nil, errors.New("mpv: ipc: client: command: timeout")
 
 		case ret = <-c:
-			if ret.Error == "success" {
+			err := matchError(ret.Error)
+			if errors.Is(err, ErrMpvSuccess) {
 				return ret.Data, nil
 			}
-			return nil, fmt.Errorf("mpv: ipc: client: command: %s", ret.Error)
+			return nil, fmt.Errorf("mpv: ipc: client: command: %w", err)
 
 		default:
 		}

@@ -92,7 +92,7 @@ func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interf
 			cmd = modCmd
 		}
 
-		if _, err := m.Command(cmd...); err != nil {
+		if _, err := m.Command(cmd...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
 			return err
 
 		}
@@ -109,7 +109,7 @@ func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interf
 				case <-done:
 					return
 				case <-ticker.C:
-					if _, err := m.Command(cmd...); err != nil {
+					if _, err := m.Command(cmd...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
 						log.Printf("error: %s", err) // FIXME
 						return
 					}

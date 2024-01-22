@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"path/filepath"
 	"time"
@@ -12,22 +13,13 @@ import (
 	"github.com/rafaelmartins/b8r/internal/source"
 )
 
-const (
-	keySeek5Fwd  = "RIGHT"
-	keySeek5Bwd  = "LEFT"
-	keySeek60Fwd = "UP"
-	keySeek60Bwd = "DOWN"
-)
-
 var (
 	mod b8.Modifier
 
-	keybinds = map[string]string{
-		keySeek5Fwd:  "seek 5",
-		keySeek5Bwd:  "seek -5",
-		keySeek60Fwd: "seek 60",
-		keySeek60Bwd: "seek -60",
-	}
+	keySeek5Fwd  = []interface{}{"seek", 5}
+	keySeek5Bwd  = []interface{}{"seek", -5}
+	keySeek60Fwd = []interface{}{"seek", 60}
+	keySeek60Bwd = []interface{}{"seek", -60}
 
 	waitingPlayback = false
 	playing         = ""
@@ -36,7 +28,7 @@ var (
 func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, modShort b8.ButtonHandler, modLong b8.ButtonHandler) b8.ButtonHandler {
 	return func(b *b8.Button) error {
 		lpDuration := 400 * time.Millisecond
-		done := make(chan bool)
+		done := make(chan struct{})
 
 		go func() {
 			ticker := time.NewTicker(lpDuration)
@@ -58,10 +50,7 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 		pressed := mod.Pressed()
 		duration := b.WaitForRelease()
 
-		select {
-		case done <- true:
-		default:
-		}
+		close(done)
 
 		if duration < lpDuration {
 			if pressed {
@@ -94,19 +83,44 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 	}
 }
 
-func b8HoldKeyHandler(m *client.MpvIpcClient, key string, modKey string) b8.ButtonHandler {
+func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interface{}) b8.ButtonHandler {
 	return func(b *b8.Button) error {
-		k := key
+		arDelay := 200 * time.Millisecond
+		arRate := (1 * time.Second) / 40
+
 		if mod.Pressed() {
-			k = modKey
+			cmd = modCmd
 		}
-		_, err := m.Command("keydown", k)
-		if err != nil {
+
+		if _, err := m.Command(cmd...); err != nil {
 			return err
+
 		}
+		time.Sleep(arDelay)
+
+		done := make(chan struct{})
+
+		go func() {
+			ticker := time.NewTicker(arRate)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-done:
+					return
+				case <-ticker.C:
+					if _, err := m.Command(cmd...); err != nil {
+						log.Printf("error: %s", err) // FIXME
+						return
+					}
+				}
+			}
+		}()
+
 		b.WaitForRelease()
-		_, err = m.Command("keyup", k)
-		return err
+		close(done)
+
+		return nil
 	}
 }
 
@@ -169,12 +183,6 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 	}
 	if m == nil {
 		return errors.New("handlers: missing mpv")
-	}
-
-	for k, v := range keybinds {
-		if _, err := m.Command("keybind", k, v); err != nil {
-			return err
-		}
 	}
 
 	if src != nil {

@@ -226,6 +226,7 @@ func standalone() {
 		"--loop",
 		"--ontop",
 		"--really-quiet",
+		"--osd-duration=3000",
 	)
 	check(s.Start())
 

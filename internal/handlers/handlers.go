@@ -267,7 +267,18 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 			_, err = m.Command("vf", "toggle", flip)
 			return err
 		},
-		nil,
+		func(b *b8.Button) error {
+			if _, err := m.Command("script-message", "osc-visibility", "always", "true"); err != nil {
+				return err
+			}
+
+			go func() {
+				time.Sleep(5 * time.Second)
+				m.Command("script-message", "osc-visibility", "auto", "true")
+			}()
+
+			return nil
+		},
 	))
 
 	dev.AddHandler(b8.BUTTON_3, b8HoldKeyHandler(m, keySeek5Bwd, keySeek60Bwd))
@@ -356,12 +367,15 @@ func RegisterMPVHandlers(m *client.MpvIpcClient, mute bool) error {
 		}
 		waitingPlayback = false
 
-		fmt.Printf("Playing: %s\n", playing)
-
 		if err := mp.SetProperty("mute", mute); err != nil {
 			return err
 		}
-		return mp.SetProperty("pause", false)
+		if err := mp.SetProperty("pause", false); err != nil {
+			return err
+		}
+
+		fmt.Printf("Playing: %s\n", playing)
+		return mp.SetProperty("force-media-title", playing)
 	})
 
 	return nil

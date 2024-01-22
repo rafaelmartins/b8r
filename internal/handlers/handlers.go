@@ -16,10 +16,10 @@ import (
 var (
 	mod b8.Modifier
 
-	keySeek5Fwd  = []interface{}{"seek", 5}
-	keySeek5Bwd  = []interface{}{"seek", -5}
-	keySeek60Fwd = []interface{}{"seek", 60}
-	keySeek60Bwd = []interface{}{"seek", -60}
+	keySeek5Fwd  = []interface{}{"osd-bar", "seek", 5}
+	keySeek5Bwd  = []interface{}{"osd-bar", "seek", -5}
+	keySeek60Fwd = []interface{}{"osd-bar", "seek", 60}
+	keySeek60Bwd = []interface{}{"osd-bar", "seek", -60}
 
 	waitingPlayback = false
 	playing         = ""
@@ -88,11 +88,12 @@ func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interf
 		arDelay := 200 * time.Millisecond
 		arRate := (1 * time.Second) / 40
 
+		c := cmd
 		if mod.Pressed() {
-			cmd = modCmd
+			c = modCmd
 		}
 
-		if _, err := m.Command(cmd...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
+		if _, err := m.Command(c...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
 			return err
 
 		}
@@ -109,7 +110,7 @@ func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interf
 				case <-done:
 					return
 				case <-ticker.C:
-					if _, err := m.Command(cmd...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
+					if _, err := m.Command(c...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
 						log.Printf("error: %s", err) // FIXME
 						return
 					}

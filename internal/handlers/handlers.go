@@ -256,6 +256,9 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 		func(b *b8.Button) error {
 			rotate, err := m.GetPropertyInt("video-dec-params/rotate")
 			if err != nil {
+				if errors.Is(err, client.ErrMpvPropertyUnavailable) {
+					return nil
+				}
 				return err
 			}
 

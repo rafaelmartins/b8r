@@ -38,6 +38,8 @@ var (
 		ErrMpvOptionFormat,
 		ErrMpvOptionError,
 		ErrMpvPropertyNotFound,
+		ErrMpvPropertyFormat,
+		ErrMpvPropertyUnavailable,
 		ErrMpvPropertyError,
 		ErrMpvCommand,
 		ErrMpvLoadingFailed,

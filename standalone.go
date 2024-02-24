@@ -245,7 +245,7 @@ func standalone() {
 	}
 
 	go func() {
-		check(dev.Listen())
+		check(dev.Listen(nil))
 	}()
 
 	check(s.Wait())

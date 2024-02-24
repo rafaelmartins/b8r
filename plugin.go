@@ -75,7 +75,7 @@ func plugin(fd uintptr) {
 
 			if err = handlers.RegisterB8Handlers(dev, m, nil); err == nil {
 				go func() {
-					check(dev.Listen(), false)
+					check(dev.Listen(nil), false)
 				}()
 			}
 		}

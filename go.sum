@@ -2,8 +2,8 @@ github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 h1:y5HC9v93H5
 github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964/go.mod h1:Xd9hchkHSWYkEqJwUGisez3G1QY8Ryz0sdWrLPMGjLk=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20230817015218-1e9933179295 h1:axhWK2PGw4VimG/FeKd5djB60dfnL3S1hDVaM9hzOhQ=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20230817015218-1e9933179295/go.mod h1:YfwrpujLI3/PsY6mDKd9JSQwEwm3LzW+aBjz3kNHKmY=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20240224034936-2740c601c1d4 h1:gHiWX7RxBsxMmqWaz3i+p5LfvThqWd44RKljSt2ic5M=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20240224034936-2740c601c1d4/go.mod h1:YfwrpujLI3/PsY6mDKd9JSQwEwm3LzW+aBjz3kNHKmY=
 github.com/rafaelmartins/usbhid v0.0.0-20230107015936-fcfe434d8b00 h1:cidoAYiLkXcJY0LBnqso99EmUsi8EnCIFCiWgqEIEkM=
 github.com/rafaelmartins/usbhid v0.0.0-20230107015936-fcfe434d8b00/go.mod h1:Xr09fAvo6QWCe/ycQor2AWlikK7GUyo4xB2HaMFEeJI=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

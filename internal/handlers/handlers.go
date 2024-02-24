@@ -95,7 +95,6 @@ func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interf
 
 		if _, err := m.Command(c...); err != nil && !errors.Is(err, client.ErrMpvCommand) {
 			return err
-
 		}
 		time.Sleep(arDelay)
 

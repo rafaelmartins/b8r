@@ -2,10 +2,10 @@ github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 h1:y5HC9v93H5
 github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964/go.mod h1:Xd9hchkHSWYkEqJwUGisez3G1QY8Ryz0sdWrLPMGjLk=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20240224034936-2740c601c1d4 h1:gHiWX7RxBsxMmqWaz3i+p5LfvThqWd44RKljSt2ic5M=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20240224034936-2740c601c1d4/go.mod h1:YfwrpujLI3/PsY6mDKd9JSQwEwm3LzW+aBjz3kNHKmY=
-github.com/rafaelmartins/usbhid v0.0.0-20230107015936-fcfe434d8b00 h1:cidoAYiLkXcJY0LBnqso99EmUsi8EnCIFCiWgqEIEkM=
-github.com/rafaelmartins/usbhid v0.0.0-20230107015936-fcfe434d8b00/go.mod h1:Xr09fAvo6QWCe/ycQor2AWlikK7GUyo4xB2HaMFEeJI=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20240415231638-0f25bf6304aa h1:5QKmP0LqWR8+rFStdOwQbr+2D6BLiyC9ztVf495kk+c=
+github.com/rafaelmartins/b8/go/b8 v0.0.0-20240415231638-0f25bf6304aa/go.mod h1:mlXOcn8GiOY7MzCxqqOVKfFsDO2ykJG0vfBodI4Sq9o=
+github.com/rafaelmartins/usbhid v0.0.0-20240415231116-c541c3e85f83 h1:D4dMVPVRx7n0UUU/FaQHizYrVv7tiIPAEDVMEXtfxbs=
+github.com/rafaelmartins/usbhid v0.0.0-20240415231116-c541c3e85f83/go.mod h1:Xr09fAvo6QWCe/ycQor2AWlikK7GUyo4xB2HaMFEeJI=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7GC73Ei8pv4MzjDUNPHgQWJdtMAaDU=

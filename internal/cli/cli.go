@@ -197,7 +197,7 @@ func (c *Cli) getOption(name byte) Option {
 	return nil
 }
 
-func (c *Cli) completion(argv []string) {
+func (c *Cli) completion() {
 	c.init()
 
 	compLine, found := os.LookupEnv("COMP_LINE")
@@ -346,7 +346,7 @@ func (c *Cli) parse(argv []string) error {
 }
 
 func (c *Cli) Parse() {
-	c.completion(os.Args)
+	c.completion()
 
 	err := c.parse(os.Args)
 

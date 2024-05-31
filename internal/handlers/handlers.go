@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rafaelmartins/b8/go/b8"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/source"
+	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
 var (
-	mod b8.Modifier
+	mod octokeyz.Modifier
 
 	keySeek5Fwd  = []interface{}{"osd-bar", "seek", 5}
 	keySeek5Bwd  = []interface{}{"osd-bar", "seek", -5}
@@ -25,8 +25,8 @@ var (
 	playing         = ""
 )
 
-func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, modShort b8.ButtonHandler, modLong b8.ButtonHandler) b8.ButtonHandler {
-	return func(b *b8.Button) error {
+func octokeyzHandler(dev *octokeyz.Device, short octokeyz.ButtonHandler, long octokeyz.ButtonHandler, modShort octokeyz.ButtonHandler, modLong octokeyz.ButtonHandler) octokeyz.ButtonHandler {
+	return func(b *octokeyz.Button) error {
 		lpDuration := 400 * time.Millisecond
 		done := make(chan struct{})
 
@@ -40,7 +40,7 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 					return
 				case <-ticker.C:
 					if dev != nil {
-						dev.Led(b8.LedFlash)
+						dev.Led(octokeyz.LedFlash)
 					}
 					return
 				}
@@ -83,8 +83,8 @@ func b8Handler(dev *b8.Device, short b8.ButtonHandler, long b8.ButtonHandler, mo
 	}
 }
 
-func b8HoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interface{}) b8.ButtonHandler {
-	return func(b *b8.Button) error {
+func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interface{}) octokeyz.ButtonHandler {
+	return func(b *octokeyz.Button) error {
 		arDelay := 200 * time.Millisecond
 		arRate := (1 * time.Second) / 40
 
@@ -177,7 +177,7 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	return err
 }
 
-func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Source) error {
+func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src *source.Source) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -186,8 +186,8 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 	}
 
 	if src != nil {
-		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
-			func(b *b8.Button) error {
+		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
+			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
 					if err := m.SetProperty("pause", false); err != nil {
 						return err
@@ -196,13 +196,13 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 				}
 				return LoadNextFile(m, src)
 			},
-			func(b *b8.Button) error {
+			func(b *octokeyz.Button) error {
 				if err := m.SetProperty("pause", true); err != nil {
 					return err
 				}
 				return m.SetProperty("fullscreen", false)
 			},
-			func(b *b8.Button) error {
+			func(b *octokeyz.Button) error {
 				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 {
 					_, err := m.Command("quit")
 					return err
@@ -213,8 +213,8 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 			nil,
 		))
 	} else {
-		dev.AddHandler(b8.BUTTON_1, b8Handler(dev,
-			func(b *b8.Button) error {
+		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
+			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil {
 					if paused {
 						if err := m.SetProperty("fullscreen", true); err != nil {
@@ -238,7 +238,7 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 				}
 			},
 			nil,
-			func(b *b8.Button) error {
+			func(b *octokeyz.Button) error {
 				_, err := m.Command("quit")
 				return err
 			},
@@ -246,14 +246,14 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 		))
 	}
 
-	dev.AddHandler(b8.BUTTON_2, b8Handler(dev,
-		func(b *b8.Button) error {
+	dev.AddHandler(octokeyz.BUTTON_2, octokeyzHandler(dev,
+		func(b *octokeyz.Button) error {
 			return m.CycleProperty("mute")
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.CyclePropertyValues("video-rotate", "90", "180", "270", "0")
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			rotate, err := m.GetPropertyInt("video-dec-params/rotate")
 			if err != nil {
 				if errors.Is(err, client.ErrMpvPropertyUnavailable) {
@@ -270,7 +270,7 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 			_, err = m.Command("vf", "toggle", flip)
 			return err
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			if _, err := m.Command("script-message", "osc-visibility", "always", "true"); err != nil {
 				return err
 			}
@@ -284,24 +284,24 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 		},
 	))
 
-	dev.AddHandler(b8.BUTTON_3, b8HoldKeyHandler(m, keySeek5Bwd, keySeek60Bwd))
+	dev.AddHandler(octokeyz.BUTTON_3, octokeyzHoldKeyHandler(m, keySeek5Bwd, keySeek60Bwd))
 
-	dev.AddHandler(b8.BUTTON_4, b8HoldKeyHandler(m, keySeek5Fwd, keySeek60Fwd))
+	dev.AddHandler(octokeyz.BUTTON_4, octokeyzHoldKeyHandler(m, keySeek5Fwd, keySeek60Fwd))
 
-	dev.AddHandler(b8.BUTTON_5, mod.Handler)
-	dev.AddHandler(b8.BUTTON_5, func(b *b8.Button) error {
-		return dev.Led(b8.LedFlash)
+	dev.AddHandler(octokeyz.BUTTON_5, mod.Handler)
+	dev.AddHandler(octokeyz.BUTTON_5, func(b *octokeyz.Button) error {
+		return dev.Led(octokeyz.LedFlash)
 	})
 
-	dev.AddHandler(b8.BUTTON_6, b8Handler(dev,
-		func(b *b8.Button) error {
+	dev.AddHandler(octokeyz.BUTTON_6, octokeyzHandler(dev,
+		func(b *octokeyz.Button) error {
 			data, err := m.GetPropertyFloat64("video-zoom")
 			if err != nil {
 				return err
 			}
 			return m.SetProperty("video-zoom", math.Log2(math.Pow(2, data)*1.25))
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			if _, err := m.Command("vf", "remove", "hflip"); err != nil {
 				return err
 			}
@@ -316,7 +316,7 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 			}
 			return m.SetProperty("video-zoom", 0)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			data, err := m.GetPropertyFloat64("video-zoom")
 			if err != nil {
 				return err
@@ -326,32 +326,32 @@ func RegisterB8Handlers(dev *b8.Device, m *client.MpvIpcClient, src *source.Sour
 		nil,
 	))
 
-	dev.AddHandler(b8.BUTTON_7, b8Handler(dev,
-		func(b *b8.Button) error {
+	dev.AddHandler(octokeyz.BUTTON_7, octokeyzHandler(dev,
+		func(b *octokeyz.Button) error {
 			return m.AddProperty("video-align-y", -0.1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.SetProperty("video-align-y", -1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.AddProperty("video-align-y", 0.1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.SetProperty("video-align-y", 1)
 		},
 	))
 
-	dev.AddHandler(b8.BUTTON_8, b8Handler(dev,
-		func(b *b8.Button) error {
+	dev.AddHandler(octokeyz.BUTTON_8, octokeyzHandler(dev,
+		func(b *octokeyz.Button) error {
 			return m.AddProperty("video-align-x", 0.1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.SetProperty("video-align-x", 1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.AddProperty("video-align-x", -0.1)
 		},
-		func(b *b8.Button) error {
+		func(b *octokeyz.Button) error {
 			return m.SetProperty("video-align-x", -1)
 		},
 	))

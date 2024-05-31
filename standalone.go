@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rafaelmartins/b8/go/b8"
 	"github.com/rafaelmartins/b8r/internal/cli"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/mpv/server"
 	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
+	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
 var (
@@ -59,7 +59,7 @@ var (
 		Help:    "serial number of device to use",
 		Metavar: "SERIAL_NUMBER",
 		CompletionHandler: func(cur string) []string {
-			devs, err := b8.Enumerate()
+			devs, err := octokeyz.Enumerate()
 			if err != nil {
 				return nil
 			}
@@ -203,17 +203,17 @@ func standalone() {
 		return
 	}
 
-	dev, err := b8.GetDevice(oSerialNumber.GetValue())
+	dev, err := octokeyz.GetDevice(oSerialNumber.GetValue())
 	check(err)
 
 	check(dev.Open())
 	defer func() {
-		dev.Led(b8.LedOff)
+		dev.Led(octokeyz.LedOff)
 		dev.Close()
 	}()
 
 	for i := 0; i < 3; i++ {
-		dev.Led(b8.LedFlash)
+		dev.Led(octokeyz.LedFlash)
 		time.Sleep(100 * time.Millisecond)
 	}
 
@@ -238,7 +238,7 @@ func standalone() {
 	}()
 
 	check(handlers.RegisterMPVHandlers(c, fmute))
-	check(handlers.RegisterB8Handlers(dev, c, hsrc))
+	check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
 
 	if fstart {
 		check(handlers.LoadNextFile(c, src))

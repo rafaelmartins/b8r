@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rafaelmartins/b8/go/b8"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
+	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
 func calledAsPlugin() (bool, uintptr) {
@@ -60,20 +60,20 @@ func plugin(fd uintptr) {
 		wait <- true
 	}()
 
-	dev, err := b8.GetDevice("")
+	dev, err := octokeyz.GetDevice("")
 	if err == nil {
 		if err = dev.Open(); err == nil {
 			defer func() {
-				dev.Led(b8.LedOff)
+				dev.Led(octokeyz.LedOff)
 				dev.Close()
 			}()
 
 			for i := 0; i < 3; i++ {
-				dev.Led(b8.LedFlash)
+				dev.Led(octokeyz.LedFlash)
 				time.Sleep(100 * time.Millisecond)
 			}
 
-			if err = handlers.RegisterB8Handlers(dev, m, nil); err == nil {
+			if err = handlers.RegisterOctokeyzHandlers(dev, m, nil); err == nil {
 				go func() {
 					check(dev.Listen(nil), false)
 				}()

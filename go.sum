@@ -2,8 +2,8 @@ github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 h1:y5HC9v93H5
 github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964/go.mod h1:Xd9hchkHSWYkEqJwUGisez3G1QY8Ryz0sdWrLPMGjLk=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20240415231638-0f25bf6304aa h1:5QKmP0LqWR8+rFStdOwQbr+2D6BLiyC9ztVf495kk+c=
-github.com/rafaelmartins/b8/go/b8 v0.0.0-20240415231638-0f25bf6304aa/go.mod h1:mlXOcn8GiOY7MzCxqqOVKfFsDO2ykJG0vfBodI4Sq9o=
+github.com/rafaelmartins/octokeyz/go/octokeyz v0.0.0-20240531032438-91cfe16ee135 h1:cYErF3Slr5t1/cESiWRY5AKrwIvY7e+jmZiCZhDKzIU=
+github.com/rafaelmartins/octokeyz/go/octokeyz v0.0.0-20240531032438-91cfe16ee135/go.mod h1:MDjSAHgfWLe+edjD4PnIJ89E8Oz6VusUxmhks/1yhCU=
 github.com/rafaelmartins/usbhid v0.0.0-20240415231116-c541c3e85f83 h1:D4dMVPVRx7n0UUU/FaQHizYrVv7tiIPAEDVMEXtfxbs=
 github.com/rafaelmartins/usbhid v0.0.0-20240415231116-c541c3e85f83/go.mod h1:Xr09fAvo6QWCe/ycQor2AWlikK7GUyo4xB2HaMFEeJI=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

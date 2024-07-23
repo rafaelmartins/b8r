@@ -9,7 +9,7 @@ complete -C /path/to/b8r -o default b8r
 ```
 
 
-## MPV plugin (Linux only)
+## MPV plugin (Linux/Mac only)
 
 ```
 $ mkdir -p ~/.config/mpv/scripts/

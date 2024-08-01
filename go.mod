@@ -12,6 +12,6 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.7.1 // indirect
-	github.com/rafaelmartins/usbhid v0.0.0-20240722205224-cac5b7be5f03 // indirect
+	github.com/rafaelmartins/usbhid v0.0.0-20240723234840-bbbebc282901 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 )

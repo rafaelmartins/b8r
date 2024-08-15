@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/cli"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
@@ -115,16 +115,12 @@ var (
 )
 
 func standalone() {
-	check := func(err any) {
-		if err != nil {
-			log.Fatal("error: ", err)
-		}
-	}
+	defer cleanup.Cleanup()
 
 	cCli.Parse()
 
 	pr, err := presets.New()
-	check(err)
+	cleanup.Check(err)
 
 	srcName := ""
 	entries := []string{}
@@ -185,10 +181,10 @@ func standalone() {
 	}
 
 	src, err := source.New(srcName)
-	check(err)
+	cleanup.Check(err)
 
 	singleEntry, err := src.SetEntries(entries, frecursive, frand, finclude, fexclude)
-	check(err)
+	cleanup.Check(err)
 
 	hsrc := src
 	if singleEntry {
@@ -197,20 +193,17 @@ func standalone() {
 	}
 
 	if oDump.GetValue() {
-		check(src.ForEachEntry(func(e string) {
+		cleanup.Check(src.ForEachEntry(func(e string) {
 			fmt.Println(e)
 		}))
 		return
 	}
 
 	dev, err := octokeyz.GetDevice(oSerialNumber.GetValue())
-	check(err)
+	cleanup.Check(err)
 
-	check(dev.Open())
-	defer func() {
-		dev.Led(octokeyz.LedOff)
-		dev.Close()
-	}()
+	cleanup.Check(dev.Open())
+	cleanup.Register(dev)
 
 	for i := 0; i < 3; i++ {
 		dev.Led(octokeyz.LedFlash)
@@ -228,25 +221,25 @@ func standalone() {
 		"--really-quiet",
 		"--osd-duration=3000",
 	)
-	check(s.Start())
+	cleanup.Check(s.Start())
 
 	c, err := client.NewFromSocket(s.GetSocket())
-	check(err)
+	cleanup.Check(err)
 
 	go func() {
-		check(c.Listen(nil))
+		cleanup.Check(c.Listen(nil))
 	}()
 
-	check(handlers.RegisterMPVHandlers(c, fmute))
-	check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
+	cleanup.Check(handlers.RegisterMPVHandlers(c, fmute))
+	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
 
 	if fstart {
-		check(handlers.LoadNextFile(c, src))
+		cleanup.Check(handlers.LoadNextFile(c, src))
 	}
 
 	go func() {
-		check(dev.Listen(nil))
+		cleanup.Check(dev.Listen(nil))
 	}()
 
-	check(s.Wait())
+	cleanup.Check(s.Wait())
 }

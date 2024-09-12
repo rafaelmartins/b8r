@@ -47,6 +47,12 @@ func (d *DataSet) Len() int {
 	return len(d.items)
 }
 
+func (d *DataSet) CurLen() int {
+	d.mtx.RLock()
+	defer d.mtx.RUnlock()
+	return len(d.citems)
+}
+
 func (d *DataSet) next() (string, error) {
 	if len(d.items) == 0 {
 		return "", ErrEmpty

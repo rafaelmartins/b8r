@@ -10,6 +10,7 @@ import (
 
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/source"
+	"github.com/rafaelmartins/b8r/internal/utils"
 	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
@@ -22,7 +23,10 @@ var (
 	keySeek60Bwd = []interface{}{"osd-bar", "seek", -60}
 
 	waitingPlayback = false
-	playing         = ""
+	current         = ""
+	next            = ""
+	idxTotal        = 0
+	idxCurrent      = 0
 )
 
 func octokeyzHandler(dev *octokeyz.Device, short octokeyz.ButtonHandler, long octokeyz.ButtonHandler, modShort octokeyz.ButtonHandler, modLong octokeyz.ButtonHandler) octokeyz.ButtonHandler {
@@ -132,17 +136,30 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 		return errors.New("handlers: missing source")
 	}
 
-	next, err := src.NextEntry()
+	current = next
+
+	var err error
+	if current == "" {
+		current, err = src.NextEntry()
+		if err != nil {
+			return err
+		}
+	}
+
+	idxTotal = src.GetEntriesCount()
+	idxCurrent = idxTotal - src.GetCurrentEntriesCount()
+
+	next, err = src.NextEntry()
 	if err != nil {
 		return err
 	}
 
-	file, err := src.GetFile(next)
+	file, err := src.GetFile(current)
 	if err != nil {
 		return err
 	}
 
-	if err := m.SetProperty("osd-playing-msg", filepath.ToSlash(next)); err != nil {
+	if err := m.SetProperty("osd-playing-msg", filepath.ToSlash(current)); err != nil {
 		return err
 	}
 	if err := m.SetProperty("pause", true); err != nil {
@@ -171,7 +188,6 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	}
 
 	waitingPlayback = true
-	playing = next
 
 	_, err = m.Command("loadfile", file)
 	return err
@@ -186,6 +202,23 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 	}
 
 	if src != nil {
+		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine3, fmt.Sprintf("Source: %s", src.GetBackendName()), octokeyz.DisplayLineAlignLeft)); err != nil {
+			return err
+		}
+		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fmt.Sprintf("0 / %d", src.GetEntriesCount()), octokeyz.DisplayLineAlignLeft)); err != nil {
+			return err
+		}
+
+		var err error
+		next, err = src.NextEntry()
+		if err != nil {
+			return err
+		}
+
+		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine7, fmt.Sprintf("N: %s", next), octokeyz.DisplayLineAlignLeft)); err != nil {
+			return err
+		}
+
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
@@ -359,7 +392,10 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 	return nil
 }
 
-func RegisterMPVHandlers(m *client.MpvIpcClient, mute bool) error {
+func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool, withNext bool) error {
+	if dev == nil {
+		return errors.New("handlers: missing device")
+	}
 	if m == nil {
 		return errors.New("handlers: missing mpv ipc client")
 	}
@@ -377,8 +413,21 @@ func RegisterMPVHandlers(m *client.MpvIpcClient, mute bool) error {
 			return err
 		}
 
-		fmt.Printf("Playing: %s\n", playing)
-		return mp.SetProperty("force-media-title", playing)
+		fmt.Printf("Playing: %s\n", current)
+		if withNext {
+			if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fmt.Sprintf("%d / %d", idxCurrent, idxTotal), octokeyz.DisplayLineAlignLeft)); err != nil {
+				return err
+			}
+		}
+		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine6, fmt.Sprintf("C: %s", current), octokeyz.DisplayLineAlignLeft)); err != nil {
+			return err
+		}
+		if withNext {
+			if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine7, fmt.Sprintf("N: %s", next), octokeyz.DisplayLineAlignLeft)); err != nil {
+				return err
+			}
+		}
+		return mp.SetProperty("force-media-title", current)
 	})
 
 	return nil

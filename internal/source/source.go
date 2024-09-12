@@ -79,6 +79,18 @@ func toExclude(r *regexp.Regexp, e string) bool {
 	return r.MatchString(e)
 }
 
+func (s *Source) GetBackendName() string {
+	return s.backend.Name()
+}
+
+func (s *Source) GetEntriesCount() int {
+	return s.entries.Len()
+}
+
+func (s *Source) GetCurrentEntriesCount() int {
+	return s.entries.CurLen()
+}
+
 func (s *Source) isMimeTypeSupported(key string) bool {
 	mt, err := s.backend.GetMimeType(key)
 	if err != nil {

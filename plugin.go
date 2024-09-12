@@ -5,11 +5,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
+	"github.com/rafaelmartins/b8r/internal/utils"
 	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
@@ -30,6 +30,54 @@ func calledAsPlugin() (bool, uintptr) {
 		}
 	}
 	return false, 0
+}
+
+func pluginInternal(m *client.MpvIpcClient) error {
+	dev, err := octokeyz.GetDevice("")
+	if err != nil {
+		return err
+	}
+
+	if err := dev.Open(); err != nil {
+		return err
+	}
+	cleanup.Register(dev)
+
+	if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine1, "b8r plugin", octokeyz.DisplayLineAlignCenter)); err != nil {
+		return err
+	}
+
+	m.AddHandler("property-change", func(m *client.MpvIpcClient, event string, data map[string]interface{}) error {
+		switch int(data["id"].(float64)) {
+		case 1:
+			if fn := data["data"]; fn != nil {
+				if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fn.(string), octokeyz.DisplayLineAlignLeft)); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if _, err := m.Command("observe_property", 1, "filename"); err != nil {
+		return err
+	}
+
+	if err := utils.LedFlash3Times(dev); err != nil {
+		return err
+	}
+
+	if err := handlers.RegisterOctokeyzHandlers(dev, m, nil); err != nil {
+		return err
+	}
+
+	go func() {
+		if err := dev.Listen(nil); err != nil {
+			log.Print(err)
+		}
+	}()
+
+	return nil
 }
 
 func plugin(fd uintptr) {
@@ -63,24 +111,6 @@ func plugin(fd uintptr) {
 		wait <- true
 	}()
 
-	dev, err := octokeyz.GetDevice("")
-	if err == nil {
-		if err = dev.Open(); err == nil {
-			cleanup.Register(dev)
-
-			for i := 0; i < 3; i++ {
-				dev.Led(octokeyz.LedFlash)
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			if err = handlers.RegisterOctokeyzHandlers(dev, m, nil); err == nil {
-				go func() {
-					check(dev.Listen(nil), false)
-				}()
-			}
-		}
-	}
-	check(err, false)
-
+	check(pluginInternal(m), false)
 	<-wait
 }

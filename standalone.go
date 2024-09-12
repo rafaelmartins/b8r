@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/cli"
@@ -12,6 +11,7 @@ import (
 	"github.com/rafaelmartins/b8r/internal/mpv/server"
 	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
+	"github.com/rafaelmartins/b8r/internal/utils"
 	"github.com/rafaelmartins/octokeyz/go/octokeyz"
 )
 
@@ -205,10 +205,8 @@ func standalone() {
 	cleanup.Check(dev.Open())
 	cleanup.Register(dev)
 
-	for i := 0; i < 3; i++ {
-		dev.Led(octokeyz.LedFlash)
-		time.Sleep(100 * time.Millisecond)
-	}
+	cleanup.Check(utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine1, "b8r", octokeyz.DisplayLineAlignCenter)))
+	cleanup.Check(utils.LedFlash3Times(dev))
 
 	s := server.New(
 		"mpv",
@@ -217,7 +215,6 @@ func standalone() {
 		"--fullscreen",
 		"--image-display-duration=inf",
 		"--loop",
-		"--ontop",
 		"--really-quiet",
 		"--osd-duration=3000",
 	)
@@ -230,7 +227,7 @@ func standalone() {
 		cleanup.Check(c.Listen(nil))
 	}()
 
-	cleanup.Check(handlers.RegisterMPVHandlers(c, fmute))
+	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, fmute, hsrc != nil))
 	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
 
 	if fstart {

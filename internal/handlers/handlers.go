@@ -430,5 +430,12 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool
 		return mp.SetProperty("force-media-title", current)
 	})
 
+	m.AddHandler("end-file", func(mp *client.MpvIpcClient, event string, data map[string]interface{}) error {
+		if data["reason"].(string) == "stop" {
+			return utils.IgnoreDisplayMissing(dev.DisplayClearLine(octokeyz.DisplayLine6))
+		}
+		return nil
+	})
+
 	return nil
 }

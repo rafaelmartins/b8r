@@ -95,7 +95,7 @@ func plugin(fd uintptr) {
 		}
 	}
 
-	m, err := client.NewFromFd(fd)
+	m, err := client.NewFromFd(fd, false)
 	check(err, true)
 
 	// according to documentation, mpv is supposed to send a shutdown event when closing.

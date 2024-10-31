@@ -41,6 +41,11 @@ var (
 		Default: false,
 		Help:    "load first entry during startup",
 	}
+	oEvents = &cli.BoolOption{
+		Name:    'e',
+		Default: false,
+		Help:    "dump mpv events (useful for development)",
+	}
 	oInclude = &cli.StringOption{
 		Name:    'i',
 		Default: ".*",
@@ -48,7 +53,7 @@ var (
 		Metavar: "REGEX",
 	}
 	oExclude = &cli.StringOption{
-		Name:    'e',
+		Name:    'x',
 		Default: "$^",
 		Help:    "regex to exclude all matched entries (applied after -i)",
 		Metavar: "REGEX",
@@ -103,6 +108,7 @@ var (
 			oRand,
 			oRecursive,
 			oStart,
+			oEvents,
 			oInclude,
 			oExclude,
 			oSerialNumber,
@@ -220,7 +226,7 @@ func standalone() {
 	)
 	cleanup.Check(s.Start())
 
-	c, err := client.NewFromSocket(s.GetSocket())
+	c, err := client.NewFromSocket(s.GetSocket(), oEvents.GetValue())
 	cleanup.Check(err)
 
 	go func() {

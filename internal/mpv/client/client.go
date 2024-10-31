@@ -27,8 +27,9 @@ type result struct {
 type EventHandler func(m *MpvIpcClient, event string, data map[string]interface{}) error
 
 type MpvIpcClient struct {
-	conn   io.ReadWriteCloser
-	closed bool
+	conn       io.ReadWriteCloser
+	closed     bool
+	dumpEvents bool
 
 	mtx       sync.Mutex
 	requestID uint
@@ -36,7 +37,7 @@ type MpvIpcClient struct {
 	handlers  map[string][]EventHandler
 }
 
-func NewFromSocket(socket string) (*MpvIpcClient, error) {
+func NewFromSocket(socket string, dumpEvents bool) (*MpvIpcClient, error) {
 	var (
 		conn net.Conn
 		err  error
@@ -54,17 +55,19 @@ func NewFromSocket(socket string) (*MpvIpcClient, error) {
 	}
 
 	return &MpvIpcClient{
-		conn:     conn,
-		pending:  make(map[uint]chan *result),
-		handlers: make(map[string][]EventHandler),
+		conn:       conn,
+		dumpEvents: dumpEvents,
+		pending:    make(map[uint]chan *result),
+		handlers:   make(map[string][]EventHandler),
 	}, nil
 }
 
-func NewFromFd(fd uintptr) (*MpvIpcClient, error) {
+func NewFromFd(fd uintptr, dumpEvents bool) (*MpvIpcClient, error) {
 	return &MpvIpcClient{
-		conn:     os.NewFile(fd, "pipe"),
-		pending:  make(map[uint]chan *result),
-		handlers: make(map[string][]EventHandler),
+		conn:       os.NewFile(fd, "pipe"),
+		dumpEvents: dumpEvents,
+		pending:    make(map[uint]chan *result),
+		handlers:   make(map[string][]EventHandler),
 	}, nil
 }
 
@@ -114,6 +117,10 @@ func (m *MpvIpcClient) Listen(errCh chan error) error {
 				continue
 			}
 			delete(ebuf, "event")
+
+			if m.dumpEvents {
+				fmt.Fprintf(os.Stderr, "event: %s: %q\n", eventName, ebuf)
+			}
 
 			handlers := []EventHandler{}
 

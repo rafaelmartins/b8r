@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rafaelmartins/octokeyz/go/octokeyz"
+	"rafaelmartins.com/p/octokeyz"
 )
 
 func IgnoreDisplayMissing(err error) error {

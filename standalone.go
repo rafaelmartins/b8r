@@ -12,7 +12,7 @@ import (
 	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
 	"github.com/rafaelmartins/b8r/internal/utils"
-	"github.com/rafaelmartins/octokeyz/go/octokeyz"
+	"rafaelmartins.com/p/octokeyz"
 )
 
 var (

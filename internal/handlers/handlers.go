@@ -11,7 +11,7 @@ import (
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/source"
 	"github.com/rafaelmartins/b8r/internal/utils"
-	"github.com/rafaelmartins/octokeyz/go/octokeyz"
+	"rafaelmartins.com/p/octokeyz"
 )
 
 var (

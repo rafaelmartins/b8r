@@ -197,19 +197,45 @@ func (c *Cli) getOption(name byte) Option {
 	return nil
 }
 
+func isSpace(r byte) bool {
+	switch r {
+	case ' ', '\t', '\r', '\n':
+		return true
+	default:
+		return false
+	}
+}
+
 func (c *Cli) completion() {
 	c.init()
 
 	compLine, found := os.LookupEnv("COMP_LINE")
-	if !found || len(os.Args) != 4 {
+	if !found {
 		return
 	}
 
-	cur := os.Args[2]
-	prev := os.Args[3]
-
 	args, _ := shlex.Split(compLine)
 	c.parse(args)
+
+	cur := ""
+	prev := ""
+	if len(os.Args) == 4 {
+		// bash
+		cur = os.Args[2]
+		prev = os.Args[3]
+	} else {
+		// zsh
+		if l, lc := len(args), len(compLine); l > 0 && lc > 0 {
+			if isSpace(compLine[lc-1]) {
+				prev = args[l-1]
+			} else {
+				cur = args[l-1]
+				if l > 1 {
+					prev = args[l-2]
+				}
+			}
+		}
+	}
 
 	comp := []string{}
 

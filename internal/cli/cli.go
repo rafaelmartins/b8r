@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/google/shlex"
@@ -214,7 +215,20 @@ func (c *Cli) completion() {
 		return
 	}
 
-	args, _ := shlex.Split(compLine)
+	if compPoint, found := os.LookupEnv("COMP_POINT"); found {
+		if compPointI, err := strconv.Atoi(compPoint); err == nil {
+			compLine = compLine[:compPointI]
+		}
+	}
+
+	args := []string{}
+	for _, cl := range []string{compLine, compLine + "\"", compLine + "'"} {
+		a, err := shlex.Split(cl)
+		if err == nil {
+			args = a
+			compLine = cl
+		}
+	}
 	c.parse(args)
 
 	cur := ""

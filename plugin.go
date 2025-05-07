@@ -35,7 +35,9 @@ func calledAsPlugin() (bool, uintptr) {
 
 func pluginInternal(m *client.MpvIpcClient) error {
 	conf, err := config.New()
-	cleanup.Check(err)
+	if err != nil {
+		return err
+	}
 
 	dev, err := octokeyz.GetDevice(conf.MpvPlugin.SerialNumber)
 	if err != nil {

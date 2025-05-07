@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/goccy/go-yaml"
@@ -31,26 +30,42 @@ type Config struct {
 	} `yaml:"mpv-plugin"`
 
 	Presets []*Preset `yaml:"presets"`
+
+	dir string
 }
 
 func New() (*Config, error) {
-	fn, ok := os.LookupEnv("B8R_CONFIG")
-	if !ok {
-		u, err := user.Current()
-		if err != nil {
-			return nil, err
+	dir, found := os.LookupEnv("B8R_CONFIGDIR")
+	if !found {
+		if home, err := os.UserHomeDir(); err == nil {
+			d := filepath.Join(home, ".b8r")
+			if st, err := os.Stat(d); err == nil && st.IsDir() {
+				dir = d
+			} else {
+				cdir, err := os.UserConfigDir()
+				if err != nil {
+					return nil, err
+				}
+				dir = filepath.Join(cdir, "b8r")
+			}
 		}
-
-		fn = filepath.Join(u.HomeDir, ".b8r.yml")
+	}
+	if dir == "" {
+		return nil, fmt.Errorf("config: failed to discover configuration directory")
+	}
+	if err := os.MkdirAll(dir, 0777); err != nil {
+		return nil, err
 	}
 
-	f, err := os.Open(fn)
+	f, err := os.Open(filepath.Join(dir, "config.yml"))
 	if err != nil {
 		return nil, fmt.Errorf("config: failed to open config file: %w", err)
 	}
 	defer f.Close()
 
-	rv := &Config{}
+	rv := &Config{
+		dir: dir,
+	}
 	if err := yaml.NewDecoder(f).Decode(rv); err != nil {
 		return nil, err
 	}

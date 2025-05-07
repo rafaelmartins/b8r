@@ -6,10 +6,10 @@ import (
 
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/cli"
+	"github.com/rafaelmartins/b8r/internal/config"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/mpv/server"
-	"github.com/rafaelmartins/b8r/internal/presets"
 	"github.com/rafaelmartins/b8r/internal/source"
 	"github.com/rafaelmartins/b8r/internal/utils"
 	"rafaelmartins.com/p/octokeyz"
@@ -82,9 +82,13 @@ var (
 		Required: true,
 		Help:     "a preset or a source to use",
 		CompletionHandler: func(prev string, cur string) []string {
-			pr, _ := presets.New()
+			c, err := config.New()
+			if err != nil {
+				return nil
+			}
+
 			rv := []string{}
-			for _, c := range append(source.List(), pr.List()...) {
+			for _, c := range append(source.List(), c.ListPresets()...) {
 				if strings.HasPrefix(c, cur) {
 					rv = append(rv, c)
 				}
@@ -125,7 +129,7 @@ func standalone() {
 
 	cCli.Parse()
 
-	pr, err := presets.New()
+	conf, err := config.New()
 	cleanup.Check(err)
 
 	srcName := ""
@@ -137,7 +141,7 @@ func standalone() {
 	finclude := oInclude.Default
 	fexclude := oExclude.Default
 
-	if p := pr.Get(aPresetOrSource.GetValue()); p != nil {
+	if p := conf.GetPreset(aPresetOrSource.GetValue()); p != nil {
 		srcName = p.Source
 		if p.Entries != nil {
 			entries = p.Entries

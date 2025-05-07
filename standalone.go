@@ -209,7 +209,11 @@ func standalone() {
 		return
 	}
 
-	dev, err := octokeyz.GetDevice(oSerialNumber.GetValue())
+	sn := conf.Standalone.SerialNumber
+	if v := oSerialNumber.GetValue(); v != "" {
+		sn = v
+	}
+	dev, err := octokeyz.GetDevice(sn)
 	cleanup.Check(err)
 
 	cleanup.Check(dev.Open())

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rafaelmartins/b8r/internal/cleanup"
+	"github.com/rafaelmartins/b8r/internal/config"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/utils"
@@ -33,7 +34,10 @@ func calledAsPlugin() (bool, uintptr) {
 }
 
 func pluginInternal(m *client.MpvIpcClient) error {
-	dev, err := octokeyz.GetDevice("")
+	conf, err := config.New()
+	cleanup.Check(err)
+
+	dev, err := octokeyz.GetDevice(conf.MpvPlugin.SerialNumber)
 	if err != nil {
 		return err
 	}

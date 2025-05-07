@@ -22,6 +22,14 @@ type Preset struct {
 }
 
 type Config struct {
+	Standalone struct {
+		SerialNumber string `yaml:"serial-number"`
+	} `yaml:"standalone"`
+
+	MpvPlugin struct {
+		SerialNumber string `yaml:"serial-number"`
+	} `yaml:"mpv-plugin"`
+
 	Presets []*Preset `yaml:"presets"`
 }
 

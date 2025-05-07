@@ -9,7 +9,6 @@ require (
 	github.com/goccy/go-yaml v1.17.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
-	gopkg.in/yaml.v3 v3.0.1
 	rafaelmartins.com/p/octokeyz v0.0.0-20250302013057-b87bac722abb
 )
 

@@ -164,6 +164,8 @@ type Cli struct {
 	iOptions  []Option
 	oHelp     *BoolOption
 	oVersion  *BoolOption
+
+	ranCompletion bool
 }
 
 func (c *Cli) init() {
@@ -208,6 +210,11 @@ func isSpace(r byte) bool {
 }
 
 func (c *Cli) completion() {
+	if c.ranCompletion {
+		return
+	}
+	c.ranCompletion = true
+
 	c.init()
 
 	compLine, found := os.LookupEnv("COMP_LINE")

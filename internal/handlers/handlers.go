@@ -275,6 +275,11 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 			nil,
 		))
 	} else {
+		// as this is used by plugin, we won't get the restart-playback event the first time
+		if err := atvMute(atv, withPause); err != nil {
+			return err
+		}
+
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil {

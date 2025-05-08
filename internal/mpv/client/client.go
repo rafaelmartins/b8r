@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"slices"
 	"sync"
 	"time"
 )
@@ -19,17 +20,22 @@ var (
 )
 
 type result struct {
-	RequestID uint        `json:"request_id"`
-	Error     string      `json:"error"`
-	Data      interface{} `json:"data"`
+	RequestID uint   `json:"request_id"`
+	Error     string `json:"error"`
+	Data      any    `json:"data"`
 }
 
-type EventHandler func(m *MpvIpcClient, event string, data map[string]interface{}) error
+type PropertyHandler func(m *MpvIpcClient, property string, value any) error
+type EventHandler func(m *MpvIpcClient, event string, data map[string]any) error
 
 type MpvIpcClient struct {
 	conn       io.ReadWriteCloser
 	closed     bool
 	dumpEvents bool
+
+	pmtx       sync.Mutex
+	propertyID uint
+	phandlers  map[uint][]PropertyHandler
 
 	mtx       sync.Mutex
 	requestID uint
@@ -43,7 +49,7 @@ func NewFromSocket(socket string, dumpEvents bool) (*MpvIpcClient, error) {
 		err  error
 	)
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		conn, err = dial(socket)
 		if err == nil {
 			break
@@ -57,6 +63,7 @@ func NewFromSocket(socket string, dumpEvents bool) (*MpvIpcClient, error) {
 	return &MpvIpcClient{
 		conn:       conn,
 		dumpEvents: dumpEvents,
+		phandlers:  make(map[uint][]PropertyHandler),
 		pending:    make(map[uint]chan *result),
 		handlers:   make(map[string][]EventHandler),
 	}, nil
@@ -66,6 +73,7 @@ func NewFromFd(fd uintptr, dumpEvents bool) (*MpvIpcClient, error) {
 	return &MpvIpcClient{
 		conn:       os.NewFile(fd, "pipe"),
 		dumpEvents: dumpEvents,
+		phandlers:  make(map[uint][]PropertyHandler),
 		pending:    make(map[uint]chan *result),
 		handlers:   make(map[string][]EventHandler),
 	}, nil
@@ -96,6 +104,25 @@ func (m *MpvIpcClient) Listen(errCh chan error) error {
 		return fmt.Errorf("mpv: ipc: client: %w", ErrClosed)
 	}
 
+	m.AddHandler("property-change", func(m *MpvIpcClient, event string, data map[string]any) error {
+		m.pmtx.Lock()
+		defer m.pmtx.Unlock()
+
+		handlers, ok := m.phandlers[uint(data["id"].(float64))]
+		if !ok || data["data"] == nil {
+			return nil
+		}
+
+		go func(handlers []PropertyHandler) {
+			for _, fn := range handlers {
+				if err := fn(m, data["name"].(string), data["data"]); err != nil {
+					sendError(errCh, err)
+				}
+			}
+		}(slices.Clone(handlers))
+		return nil
+	})
+
 	scanner := bufio.NewScanner(m.conn)
 	for scanner.Scan() {
 		buf := result{}
@@ -104,7 +131,7 @@ func (m *MpvIpcClient) Listen(errCh chan error) error {
 			continue
 		}
 		if buf.Error == "" {
-			ebuf := map[string]interface{}{}
+			ebuf := map[string]any{}
 			if err := json.Unmarshal(scanner.Bytes(), &ebuf); err != nil {
 				sendError(errCh, err)
 				continue
@@ -119,29 +146,18 @@ func (m *MpvIpcClient) Listen(errCh chan error) error {
 			delete(ebuf, "event")
 
 			if m.dumpEvents {
-				fmt.Fprintf(os.Stderr, "event: %s: %q\n", eventName, ebuf)
+				fmt.Fprintf(os.Stderr, "event: mpv: %s: %+v\n", eventName, ebuf)
 			}
-
-			handlers := []EventHandler{}
 
 			m.mtx.Lock()
-			if _, ok := m.handlers[eventName]; ok {
-				for _, fn := range m.handlers[eventName] {
-					if fn == nil {
-						continue
-					}
-					handlers = append(handlers, fn)
-				}
-			}
-			m.mtx.Unlock()
-
 			go func(hnd []EventHandler) {
 				for _, fn := range hnd {
 					if err := fn(m, eventName, ebuf); err != nil {
 						sendError(errCh, err)
 					}
 				}
-			}(handlers)
+			}(slices.Clone(m.handlers[eventName]))
+			m.mtx.Unlock()
 
 			continue
 		}
@@ -157,6 +173,10 @@ func (m *MpvIpcClient) Listen(errCh chan error) error {
 }
 
 func (m *MpvIpcClient) AddHandler(event string, fn EventHandler) bool {
+	if fn == nil {
+		return false
+	}
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -165,14 +185,14 @@ func (m *MpvIpcClient) AddHandler(event string, fn EventHandler) bool {
 	return found
 }
 
-func (m *MpvIpcClient) CommandWithContext(ctx context.Context, args ...interface{}) (interface{}, error) {
+func (m *MpvIpcClient) CommandWithContext(ctx context.Context, args ...any) (any, error) {
 	if m.closed {
 		return nil, fmt.Errorf("mpv: ipc: client: %w", ErrClosed)
 	}
 
 	m.mtx.Lock()
 	m.requestID++
-	cmd := map[string]interface{}{
+	cmd := map[string]any{
 		"request_id": m.requestID,
 		"command":    args,
 		"async":      true,
@@ -216,11 +236,11 @@ func (m *MpvIpcClient) CommandWithContext(ctx context.Context, args ...interface
 	}
 }
 
-func (m *MpvIpcClient) Command(args ...interface{}) (interface{}, error) {
+func (m *MpvIpcClient) Command(args ...any) (any, error) {
 	return m.CommandWithContext(context.Background(), args...)
 }
 
-func (m *MpvIpcClient) GetProperty(name string) (interface{}, error) {
+func (m *MpvIpcClient) GetProperty(name string) (any, error) {
 	return m.Command("get_property", name)
 }
 
@@ -272,12 +292,12 @@ func (m *MpvIpcClient) GetPropertyString(name string) (string, error) {
 	return "", errors.New("mpv: ipc: client: received property value is not a string")
 }
 
-func (m *MpvIpcClient) SetProperty(name string, value interface{}) error {
+func (m *MpvIpcClient) SetProperty(name string, value any) error {
 	_, err := m.Command("set_property", name, value)
 	return err
 }
 
-func (m *MpvIpcClient) AddProperty(name string, value interface{}) error {
+func (m *MpvIpcClient) AddProperty(name string, value any) error {
 	_, err := m.Command("add", name, value)
 	return err
 }
@@ -287,7 +307,22 @@ func (m *MpvIpcClient) CycleProperty(name string) error {
 	return err
 }
 
-func (m *MpvIpcClient) CyclePropertyValues(name string, value ...interface{}) error {
-	_, err := m.Command(append([]interface{}{"cycle_values", name}, value...)...)
+func (m *MpvIpcClient) CyclePropertyValues(name string, value ...any) error {
+	_, err := m.Command(append([]any{"cycle_values", name}, value...)...)
+	return err
+}
+
+func (m *MpvIpcClient) ObserveProperty(name string, fn PropertyHandler) error {
+	if fn == nil {
+		return nil
+	}
+
+	m.pmtx.Lock()
+	defer m.pmtx.Unlock()
+
+	m.propertyID++
+	m.phandlers[m.propertyID] = append(m.phandlers[m.propertyID], fn)
+
+	_, err := m.Command("observe_property", m.propertyID, name)
 	return err
 }

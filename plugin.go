@@ -53,19 +53,9 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
-	m.AddHandler("property-change", func(m *client.MpvIpcClient, event string, data map[string]interface{}) error {
-		switch int(data["id"].(float64)) {
-		case 1:
-			if fn := data["data"]; fn != nil {
-				if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fn.(string), octokeyz.DisplayLineAlignLeft)); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
-
-	if _, err := m.Command("observe_property", 1, "filename"); err != nil {
+	if err := m.ObserveProperty("filename", func(m *client.MpvIpcClient, property string, value any) error {
+		return utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, value.(string), octokeyz.DisplayLineAlignLeft))
+	}); err != nil {
 		return err
 	}
 

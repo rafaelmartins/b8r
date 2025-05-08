@@ -130,6 +130,9 @@ func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []any, modCmd []any) oct
 }
 
 func atvMute(atv *androidtv.Remote, pause bool) error {
+	if atv == nil {
+		return nil
+	}
 	if pause {
 		if err := atv.Pause(); err != nil {
 			return err
@@ -139,6 +142,9 @@ func atvMute(atv *androidtv.Remote, pause bool) error {
 }
 
 func atvUnmute(atv *androidtv.Remote, unpause bool) error {
+	if atv == nil {
+		return nil
+	}
 	if err := atv.Unmute(); err != nil {
 		return err
 	}

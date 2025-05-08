@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rafaelmartins/b8r/internal/androidtv"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/source"
 	"github.com/rafaelmartins/b8r/internal/utils"
@@ -128,6 +129,25 @@ func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []
 	}
 }
 
+func atvMute(atv *androidtv.Remote, pause bool) error {
+	if pause {
+		if err := atv.Pause(); err != nil {
+			return err
+		}
+	}
+	return atv.Mute()
+}
+
+func atvUnmute(atv *androidtv.Remote, unpause bool) error {
+	if err := atv.Unmute(); err != nil {
+		return err
+	}
+	if unpause {
+		return atv.Play()
+	}
+	return nil
+}
+
 func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	if m == nil {
 		return errors.New("handlers: missing mpv")
@@ -193,7 +213,7 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	return err
 }
 
-func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src *source.Source) error {
+func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *androidtv.Remote, src *source.Source, withPause bool) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -222,6 +242,9 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
+					if err := atvMute(atv, withPause); err != nil {
+						return err
+					}
 					if err := m.SetProperty("pause", false); err != nil {
 						return err
 					}
@@ -230,12 +253,18 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 				return LoadNextFile(m, src)
 			},
 			func(b *octokeyz.Button) error {
+				if err := atvUnmute(atv, withPause); err != nil {
+					return err
+				}
 				if err := m.SetProperty("pause", true); err != nil {
 					return err
 				}
 				return m.SetProperty("fullscreen", false)
 			},
 			func(b *octokeyz.Button) error {
+				if err := atvUnmute(atv, withPause); err != nil {
+					return err
+				}
 				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 {
 					_, err := m.Command("quit")
 					return err
@@ -250,6 +279,9 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil {
 					if paused {
+						if err := atvMute(atv, withPause); err != nil {
+							return err
+						}
 						if err := m.SetProperty("fullscreen", true); err != nil {
 							return err
 						}
@@ -261,6 +293,9 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 
 				if fs, err := m.GetPropertyBool("fullscreen"); err == nil {
 					if fs {
+						if err := atvUnmute(atv, withPause); err != nil {
+							return err
+						}
 						if err := m.SetProperty("pause", true); err != nil {
 							return err
 						}
@@ -272,6 +307,9 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 			},
 			nil,
 			func(b *octokeyz.Button) error {
+				if err := atvUnmute(atv, withPause); err != nil {
+					return err
+				}
 				_, err := m.Command("quit")
 				return err
 			},
@@ -392,7 +430,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 	return nil
 }
 
-func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool, withNext bool) error {
+func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *androidtv.Remote, mute bool, withNext bool, withPause bool) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -405,6 +443,10 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool
 			return nil
 		}
 		waitingPlayback = false
+
+		if err := atvMute(atv, withPause); err != nil {
+			return err
+		}
 
 		if err := mp.SetProperty("mute", mute); err != nil {
 			return err

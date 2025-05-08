@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +22,10 @@ type Preset struct {
 }
 
 type Config struct {
+	AndroidTv struct {
+		Host string `yaml:"host"`
+	} `yaml:"android-tv"`
+
 	Standalone struct {
 		SerialNumber string `yaml:"serial-number"`
 	} `yaml:"standalone"`
@@ -87,4 +92,10 @@ func (c *Config) ListPresets() []string {
 		rv = append(rv, pr.Name)
 	}
 	return rv
+}
+
+func (c *Config) GetAndroidTvCertificate() (string, bool) {
+	rv := filepath.Join(c.dir, "android-tv.pem")
+	_, err := os.Stat(rv)
+	return rv, !errors.Is(err, os.ErrNotExist)
 }

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/rafaelmartins/b8r/internal/androidtv"
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/cli"
 	"github.com/rafaelmartins/b8r/internal/config"
@@ -44,7 +47,17 @@ var (
 	oEvents = &cli.BoolOption{
 		Name:    'e',
 		Default: false,
-		Help:    "dump mpv events (useful for development)",
+		Help:    "dump mpv/android-tv events (useful for development)",
+	}
+	oPairAndroidTv = &cli.BoolOption{
+		Name:    'p',
+		Default: false,
+		Help:    "pair with android-tv as remote control and exit",
+	}
+	oPauseAndroidTv = &cli.BoolOption{
+		Name:    'a',
+		Default: false,
+		Help:    "pause/unpause android-tv device when muting/unmuting",
 	}
 	oInclude = &cli.StringOption{
 		Name:    'i',
@@ -79,7 +92,7 @@ var (
 	}
 	aPresetOrSource = &cli.Argument{
 		Name:     "preset-or-source",
-		Required: true,
+		Required: false,
 		Help:     "a preset or a source to use",
 		CompletionHandler: func(prev string, cur string) []string {
 			c, err := config.New()
@@ -113,6 +126,8 @@ var (
 			oRecursive,
 			oStart,
 			oEvents,
+			oPairAndroidTv,
+			oPauseAndroidTv,
 			oInclude,
 			oExclude,
 			oSerialNumber,
@@ -126,11 +141,52 @@ var (
 
 func standalone() {
 	defer cleanup.Cleanup()
-
 	cCli.Parse()
 
 	conf, err := config.New()
 	cleanup.Check(err)
+
+	if oPairAndroidTv.GetValue() {
+		if conf.AndroidTv.Host == "" {
+			cleanup.Check("android-tv host not configured")
+		}
+
+		certFile, exists := conf.GetAndroidTvCertificate()
+		if exists {
+			cleanup.Check("android-tv certificate already exists, please remove it to pair again")
+		}
+
+		cert, err := androidtv.CreateCertificate(certFile)
+		cleanup.Check(err)
+
+		atv, err := androidtv.NewPairing(conf.AndroidTv.Host, cert, oEvents.GetValue())
+		cleanup.Check(err)
+		cleanup.Register(atv)
+
+		atv.SecretCallback = func() (string, error) {
+			fmt.Print("Please enter the code displayed on TV: ")
+			rv, err := bufio.NewReader(os.Stdin).ReadString('\n')
+			if err != nil {
+				return "", err
+			}
+			if s := strings.TrimSpace(rv); len(s) == 6 {
+				return s, nil
+			}
+			return "", fmt.Errorf("invalid code, must be 6 hexadecimal digits")
+		}
+
+		atv.CompleteCallback = func() {
+			fmt.Println("Paired successfully")
+			cleanup.Exit(0)
+		}
+
+		cleanup.Check(atv.Request())
+		cleanup.Check(atv.Listen())
+		return
+	}
+
+	aPresetOrSource.Required = true
+	cCli.Parse()
 
 	srcName := ""
 	entries := []string{}
@@ -241,8 +297,27 @@ func standalone() {
 		cleanup.Check(c.Listen(nil))
 	}()
 
-	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, fmute, hsrc != nil))
-	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
+	atv := (*androidtv.Remote)(nil)
+	if conf.AndroidTv.Host != "" {
+		certFile, exists := conf.GetAndroidTvCertificate()
+		if !exists {
+			cleanup.Check("android-tv certificate not found, please pair by calling this binary with `-p`")
+		}
+
+		cert, err := androidtv.OpenCertificate(certFile)
+		cleanup.Check(err)
+
+		atv, err = androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
+		cleanup.Check(err)
+		cleanup.Register(atv)
+
+		go func() {
+			cleanup.Check(atv.Listen())
+		}()
+	}
+
+	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, atv, fmute, hsrc != nil, oPauseAndroidTv.GetValue()))
+	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, atv, hsrc, oPauseAndroidTv.GetValue()))
 
 	if fstart {
 		cleanup.Check(handlers.LoadNextFile(c, src))

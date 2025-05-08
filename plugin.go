@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rafaelmartins/b8r/internal/androidtv"
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/config"
 	"github.com/rafaelmartins/b8r/internal/handlers"
@@ -53,6 +54,25 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
+	atv := (*androidtv.Remote)(nil)
+	if conf.AndroidTv.Host != "" {
+		certFile, exists := conf.GetAndroidTvCertificate()
+		if !exists {
+			cleanup.Check("android-tv certificate not found, please pair by calling this binary with `-p`")
+		}
+
+		cert, err := androidtv.OpenCertificate(certFile)
+		cleanup.Check(err)
+
+		atv, err = androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
+		cleanup.Check(err)
+		cleanup.Register(atv)
+
+		go func() {
+			cleanup.Check(atv.Listen())
+		}()
+	}
+
 	if err := m.ObserveProperty("filename", func(m *client.MpvIpcClient, property string, value any) error {
 		return utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, value.(string), octokeyz.DisplayLineAlignLeft))
 	}); err != nil {
@@ -63,7 +83,7 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
-	if err := handlers.RegisterOctokeyzHandlers(dev, m, nil); err != nil {
+	if err := handlers.RegisterOctokeyzHandlers(dev, m, atv, nil, false); err != nil {
 		return err
 	}
 

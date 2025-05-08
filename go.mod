@@ -1,8 +1,6 @@
 module github.com/rafaelmartins/b8r
 
-go 1.21.0
-
-toolchain go1.24.2
+go 1.24
 
 require (
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964

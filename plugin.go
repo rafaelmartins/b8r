@@ -116,7 +116,7 @@ func plugin(fd uintptr) {
 
 	// according to documentation, mpv is supposed to send a shutdown event when closing.
 	// i never saw it happening (mpv just sends an EOF in the fd), but lets support it.
-	m.AddHandler("shutdown", func(m *client.MpvIpcClient, event string, data map[string]interface{}) error {
+	m.AddHandler("shutdown", func(m *client.MpvIpcClient, event string, data map[string]any) error {
 		cleanup.Exit(0)
 		return nil
 	})

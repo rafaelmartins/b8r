@@ -18,10 +18,10 @@ import (
 var (
 	mod octokeyz.Modifier
 
-	keySeek5Fwd  = []interface{}{"osd-bar", "seek", 5}
-	keySeek5Bwd  = []interface{}{"osd-bar", "seek", -5}
-	keySeek60Fwd = []interface{}{"osd-bar", "seek", 60}
-	keySeek60Bwd = []interface{}{"osd-bar", "seek", -60}
+	keySeek5Fwd  = []any{"osd-bar", "seek", 5}
+	keySeek5Bwd  = []any{"osd-bar", "seek", -5}
+	keySeek60Fwd = []any{"osd-bar", "seek", 60}
+	keySeek60Bwd = []any{"osd-bar", "seek", -60}
 
 	waitingPlayback = false
 	current         = ""
@@ -88,7 +88,7 @@ func octokeyzHandler(dev *octokeyz.Device, short octokeyz.ButtonHandler, long oc
 	}
 }
 
-func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []interface{}, modCmd []interface{}) octokeyz.ButtonHandler {
+func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []any, modCmd []any) octokeyz.ButtonHandler {
 	return func(b *octokeyz.Button) error {
 		arDelay := 200 * time.Millisecond
 		arRate := (1 * time.Second) / 40
@@ -443,7 +443,7 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *andr
 		return errors.New("handlers: missing mpv ipc client")
 	}
 
-	m.AddHandler("playback-restart", func(mp *client.MpvIpcClient, event string, data map[string]interface{}) error {
+	m.AddHandler("playback-restart", func(mp *client.MpvIpcClient, event string, data map[string]any) error {
 		if !waitingPlayback {
 			return nil
 		}
@@ -477,7 +477,7 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *andr
 		return mp.SetProperty("force-media-title", current)
 	})
 
-	m.AddHandler("end-file", func(mp *client.MpvIpcClient, event string, data map[string]interface{}) error {
+	m.AddHandler("end-file", func(mp *client.MpvIpcClient, event string, data map[string]any) error {
 		if data["reason"].(string) == "stop" {
 			return utils.IgnoreDisplayMissing(dev.DisplayClearLine(octokeyz.DisplayLine6))
 		}

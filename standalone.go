@@ -185,8 +185,10 @@ func standalone() {
 		return
 	}
 
-	aPresetOrSource.Required = true
-	cCli.Parse()
+	if !aPresetOrSource.IsSet() {
+		cCli.Usage(false, "PRESET_OR_SOURCE argument required unless setting `-p'")
+		cleanup.Exit(1)
+	}
 
 	srcName := ""
 	entries := []string{}

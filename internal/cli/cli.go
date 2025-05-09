@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -164,8 +165,6 @@ type Cli struct {
 	iOptions  []Option
 	oHelp     *BoolOption
 	oVersion  *BoolOption
-
-	ranCompletion bool
 }
 
 func (c *Cli) init() {
@@ -210,11 +209,6 @@ func isSpace(r byte) bool {
 }
 
 func (c *Cli) completion() {
-	if c.ranCompletion {
-		return
-	}
-	c.ranCompletion = true
-
 	c.init()
 
 	compLine, found := os.LookupEnv("COMP_LINE")
@@ -399,7 +393,7 @@ func (c *Cli) Parse() {
 
 	if err == nil || errors.Is(err, errValidation) {
 		if c.oHelp.GetValue() {
-			c.usage(true, os.Stderr, os.Args)
+			c.usage(os.Stderr, os.Args, true, nil)
 			os.Exit(0)
 		}
 
@@ -411,10 +405,7 @@ func (c *Cli) Parse() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: error: %s", filepath.Base(os.Args[0]), err)
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr)
-		c.usage(false, os.Stderr, os.Args)
+		c.usage(os.Stderr, os.Args, false, err)
 		os.Exit(1)
 	}
 }
@@ -435,12 +426,18 @@ func (c *Cli) argUsage(arg *Argument) string {
 	return strings.ToUpper(strings.Replace(arg.Name, "-", "_", -1))
 }
 
-func (c *Cli) usage(full bool, w io.Writer, argv []string) {
+func (c *Cli) usage(w io.Writer, argv []string, full bool, err any) {
 	c.init()
 
 	argv0 := "prog"
 	if len(argv) > 0 {
 		argv0 = filepath.Base(argv[0])
+	}
+
+	if err != nil {
+		fmt.Fprintf(w, "%s: error: %s", argv0, err)
+		fmt.Fprintln(w)
+		fmt.Fprintln(w)
 	}
 
 	titlePadding := len(argv0)
@@ -460,14 +457,7 @@ func (c *Cli) usage(full bool, w io.Writer, argv []string) {
 		if fOpts[i] == nil {
 			continue
 		}
-		found := false
-		for _, n := range iOpts {
-			if n == i {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(iOpts, i) {
 			iOpts = append(iOpts, i)
 		}
 	}
@@ -528,6 +518,6 @@ func (c *Cli) usage(full bool, w io.Writer, argv []string) {
 	}
 }
 
-func (c *Cli) Usage(full bool) {
-	c.usage(full, os.Stderr, os.Args)
+func (c *Cli) Usage(full bool, err any) {
+	c.usage(os.Stderr, os.Args, full, err)
 }

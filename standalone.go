@@ -54,10 +54,15 @@ var (
 		Default: false,
 		Help:    "pair with android-tv as remote control and exit",
 	}
+	oMuteAndroidTv = &cli.BoolOption{
+		Name:    'u',
+		Default: false,
+		Help:    "mute/unmute android-tv device",
+	}
 	oPauseAndroidTv = &cli.BoolOption{
 		Name:    'a',
 		Default: false,
-		Help:    "pause/unpause android-tv device when muting/unmuting",
+		Help:    "pause/unpause android-tv device",
 	}
 	oInclude = &cli.StringOption{
 		Name:    'i',
@@ -127,6 +132,7 @@ var (
 			oStart,
 			oEvents,
 			oPairAndroidTv,
+			oMuteAndroidTv,
 			oPauseAndroidTv,
 			oInclude,
 			oExclude,
@@ -299,8 +305,7 @@ func standalone() {
 		cleanup.Check(c.Listen(nil))
 	}()
 
-	atv := (*androidtv.Remote)(nil)
-	if conf.AndroidTv.Host != "" {
+	if conf.AndroidTv.Host != "" && (oMuteAndroidTv.GetValue() || oPauseAndroidTv.GetValue()) {
 		certFile, exists := conf.GetAndroidTvCertificate()
 		if !exists {
 			cleanup.Check("android-tv certificate not found, please pair by calling this binary with `-p`")
@@ -309,17 +314,19 @@ func standalone() {
 		cert, err := androidtv.OpenCertificate(certFile)
 		cleanup.Check(err)
 
-		atv, err = androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
+		atv, err := androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
 		cleanup.Check(err)
 		cleanup.Register(atv)
 
 		go func() {
 			cleanup.Check(atv.Listen())
 		}()
+
+		handlers.AndroidTvInit(atv, oMuteAndroidTv.GetValue(), oPauseAndroidTv.GetValue())
 	}
 
-	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, atv, fmute, hsrc != nil, oPauseAndroidTv.GetValue()))
-	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, atv, hsrc, oPauseAndroidTv.GetValue()))
+	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, fmute, hsrc != nil))
+	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
 
 	if fstart {
 		cleanup.Check(handlers.LoadNextFile(c, src))

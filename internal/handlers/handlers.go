@@ -28,6 +28,10 @@ var (
 	next            = ""
 	idxTotal        = 0
 	idxCurrent      = 0
+
+	atv        *androidtv.Remote
+	atvMuting  = false
+	atvPausing = false
 )
 
 func octokeyzHandler(dev *octokeyz.Device, short octokeyz.ButtonHandler, long octokeyz.ButtonHandler, modShort octokeyz.ButtonHandler, modLong octokeyz.ButtonHandler) octokeyz.ButtonHandler {
@@ -129,27 +133,63 @@ func octokeyzHoldKeyHandler(m *client.MpvIpcClient, cmd []any, modCmd []any) oct
 	}
 }
 
-func atvMute(atv *androidtv.Remote, pause bool) error {
+func AndroidTvInit(a *androidtv.Remote, muting bool, pausing bool) {
+	atv = a
+	atvMuting = muting
+	atvPausing = pausing
+}
+
+func atvUpdateDisplay(dev *octokeyz.Device) error {
+	c := []byte{' ', ' ', 0}
+	if atvMuting {
+		c[0] = 'M'
+	}
+	if atvPausing {
+		c[1] = 'P'
+	}
+	return utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine2, string(c), octokeyz.DisplayLineAlignRight))
+}
+
+func atvToggleMuting(dev *octokeyz.Device) error {
+	atvMuting = !atvMuting
+	return atvUpdateDisplay(dev)
+}
+
+func atvTogglePausing(dev *octokeyz.Device) error {
+	atvPausing = !atvPausing
+	return atvUpdateDisplay(dev)
+}
+
+func atvMute() error {
 	if atv == nil {
 		return nil
 	}
-	if pause {
+	if atvPausing {
 		if err := atv.Pause(); err != nil {
 			return err
 		}
 	}
-	return atv.Mute()
+	if atvMuting {
+		if err := atv.Mute(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func atvUnmute(atv *androidtv.Remote, unpause bool) error {
+func atvUnmute() error {
 	if atv == nil {
 		return nil
 	}
-	if err := atv.Unmute(); err != nil {
-		return err
+	if atvMuting {
+		if err := atv.Unmute(); err != nil {
+			return err
+		}
 	}
-	if unpause {
-		return atv.Play()
+	if atvPausing {
+		if err := atv.Play(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -219,12 +259,16 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	return err
 }
 
-func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *androidtv.Remote, src *source.Source, withPause bool) error {
+func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src *source.Source) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
 	if m == nil {
 		return errors.New("handlers: missing mpv")
+	}
+
+	if err := atvUpdateDisplay(dev); err != nil {
+		return err
 	}
 
 	if src != nil {
@@ -248,7 +292,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil && paused {
-					if err := atvMute(atv, withPause); err != nil {
+					if err := atvMute(); err != nil {
 						return err
 					}
 					if err := m.SetProperty("pause", false); err != nil {
@@ -259,7 +303,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 				return LoadNextFile(m, src)
 			},
 			func(b *octokeyz.Button) error {
-				if err := atvUnmute(atv, withPause); err != nil {
+				if err := atvUnmute(); err != nil {
 					return err
 				}
 				if err := m.SetProperty("pause", true); err != nil {
@@ -273,17 +317,19 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 					return err
 				}
 
-				if err := atvUnmute(atv, withPause); err != nil {
+				if err := atvUnmute(); err != nil {
 					return err
 				}
 				_, err := m.Command("stop")
 				return err
 			},
-			nil,
+			func(b *octokeyz.Button) error {
+				return atvTogglePausing(dev)
+			},
 		))
 	} else {
 		// as this is used by plugin, we won't get the restart-playback event the first time
-		if err := atvMute(atv, withPause); err != nil {
+		if err := atvMute(); err != nil {
 			return err
 		}
 
@@ -291,7 +337,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 			func(b *octokeyz.Button) error {
 				if paused, err := m.GetPropertyBool("pause"); err == nil {
 					if paused {
-						if err := atvMute(atv, withPause); err != nil {
+						if err := atvMute(); err != nil {
 							return err
 						}
 						if err := m.SetProperty("fullscreen", true); err != nil {
@@ -305,7 +351,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 
 				if fs, err := m.GetPropertyBool("fullscreen"); err == nil {
 					if fs {
-						if err := atvUnmute(atv, withPause); err != nil {
+						if err := atvUnmute(); err != nil {
 							return err
 						}
 						if err := m.SetProperty("pause", true); err != nil {
@@ -322,7 +368,9 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 				_, err := m.Command("quit")
 				return err
 			},
-			nil,
+			func(b *octokeyz.Button) error {
+				return atvTogglePausing(dev)
+			},
 		))
 	}
 
@@ -351,16 +399,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 			return err
 		},
 		func(b *octokeyz.Button) error {
-			if _, err := m.Command("script-message", "osc-visibility", "always", "true"); err != nil {
-				return err
-			}
-
-			go func() {
-				time.Sleep(5 * time.Second)
-				m.Command("script-message", "osc-visibility", "auto", "true")
-			}()
-
-			return nil
+			return atvToggleMuting(dev)
 		},
 	))
 
@@ -439,7 +478,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 	return nil
 }
 
-func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *androidtv.Remote, mute bool, withNext bool, withPause bool) error {
+func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool, withNext bool) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -453,7 +492,7 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv *andr
 		}
 		waitingPlayback = false
 
-		if err := atvMute(atv, withPause); err != nil {
+		if err := atvMute(); err != nil {
 			return err
 		}
 

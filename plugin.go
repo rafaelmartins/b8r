@@ -34,6 +34,14 @@ func calledAsPlugin() (bool, uintptr) {
 	return false, 0
 }
 
+func envConfBool(key string, dflt bool) (bool, error) {
+	s, found := os.LookupEnv(key)
+	if !found {
+		return dflt, nil
+	}
+	return strconv.ParseBool(s)
+}
+
 func pluginInternal(m *client.MpvIpcClient) error {
 	conf, err := config.New()
 	if err != nil {
@@ -54,8 +62,12 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
-	atv := (*androidtv.Remote)(nil)
-	if conf.AndroidTv.Host != "" {
+	atvMuting, err := envConfBool("B8R_MPV_ATV_MUTE", false)
+	cleanup.Check(err)
+	atvPausing, err := envConfBool("B8R_MPV_ATV_PAUSE", false)
+	cleanup.Check(err)
+
+	if conf.AndroidTv.Host != "" && (atvMuting || atvPausing) {
 		certFile, exists := conf.GetAndroidTvCertificate()
 		if !exists {
 			cleanup.Check("android-tv certificate not found, please pair by calling this binary with `-p`")
@@ -64,13 +76,15 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		cert, err := androidtv.OpenCertificate(certFile)
 		cleanup.Check(err)
 
-		atv, err = androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
+		atv, err := androidtv.NewRemote(conf.AndroidTv.Host, cert, oEvents.GetValue())
 		cleanup.Check(err)
 		cleanup.Register(atv)
 
 		go func() {
 			cleanup.Check(atv.Listen())
 		}()
+
+		handlers.AndroidTvInit(atv, atvMuting, atvPausing)
 	}
 
 	if err := m.ObserveProperty("filename", func(m *client.MpvIpcClient, property string, value any) error {
@@ -83,7 +97,7 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
-	if err := handlers.RegisterOctokeyzHandlers(dev, m, atv, nil, false); err != nil {
+	if err := handlers.RegisterOctokeyzHandlers(dev, m, nil); err != nil {
 		return err
 	}
 

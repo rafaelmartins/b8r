@@ -268,11 +268,12 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 				return m.SetProperty("fullscreen", false)
 			},
 			func(b *octokeyz.Button) error {
-				if err := atvUnmute(atv, withPause); err != nil {
-					return err
-				}
 				if cnt, err := m.GetPropertyInt("playlist-count"); err == nil && int(cnt) == 0 {
 					_, err := m.Command("quit")
+					return err
+				}
+
+				if err := atvUnmute(atv, withPause); err != nil {
 					return err
 				}
 				_, err := m.Command("stop")
@@ -318,9 +319,6 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, atv 
 			},
 			nil,
 			func(b *octokeyz.Button) error {
-				if err := atvUnmute(atv, withPause); err != nil {
-					return err
-				}
 				_, err := m.Command("quit")
 				return err
 			},

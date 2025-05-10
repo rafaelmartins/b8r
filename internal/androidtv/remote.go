@@ -10,6 +10,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type ppStatus byte
+
+const (
+	ppUnknown ppStatus = iota
+	ppPlay
+	ppPause
+)
+
 type Remote struct {
 	c          *connection
 	errCh      chan struct{}
@@ -24,6 +32,9 @@ type Remote struct {
 	volMax   uint32
 	volLevel uint32
 	volMuted bool
+
+	pp ppStatus
+	m  bool
 }
 
 func NewRemote(host string, cert *tls.Certificate, dumpEvents bool) (*Remote, error) {
@@ -37,6 +48,7 @@ func NewRemote(host string, cert *tls.Certificate, dumpEvents bool) (*Remote, er
 		errCh:      make(chan struct{}),
 		dumpEvents: dumpEvents,
 		startedCh:  make(chan struct{}),
+		pp:         ppUnknown,
 	}
 	go func() {
 		rv.err = rv.c.Listen(rv)
@@ -46,6 +58,13 @@ func NewRemote(host string, cert *tls.Certificate, dumpEvents bool) (*Remote, er
 }
 
 func (r *Remote) Close() error {
+	if r.m && r.volMuted {
+		r.Unmute()
+	}
+	if r.pp == ppPause {
+		r.Play()
+	}
+
 	err := r.c.Close()
 	r.startedCh = make(chan struct{})
 	r.started = false
@@ -143,6 +162,10 @@ func (r *Remote) handle(msg proto.Message) error {
 }
 
 func (r *Remote) SendKeyCode(code string) error {
+	if r.ignore {
+		return nil // avoid spamming commands while the device is not available for it
+	}
+
 	<-r.startedCh
 
 	keycode, found := pb.RemoteKeyCode_value[code]
@@ -150,12 +173,25 @@ func (r *Remote) SendKeyCode(code string) error {
 		return fmt.Errorf("androidtv: key code not found: %s", code)
 	}
 
-	return r.Write(&pb.RemoteMessage{
+	if err := r.Write(&pb.RemoteMessage{
 		RemoteKeyInject: &pb.RemoteKeyInject{
 			KeyCode:   pb.RemoteKeyCode(keycode),
 			Direction: pb.RemoteDirection_SHORT,
 		},
-	})
+	}); err != nil {
+		return err
+	}
+
+	switch code {
+	case "KEYCODE_VOLUME_MUTE":
+		r.m = true
+	case "KEYCODE_MEDIA_PLAY":
+		r.pp = ppPlay
+	case "KEYCODE_MEDIA_PAUSE":
+		r.pp = ppPause
+	}
+
+	return nil
 }
 
 func (r *Remote) Mute() error {

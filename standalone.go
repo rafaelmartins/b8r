@@ -311,7 +311,7 @@ func standalone() {
 		cleanup.Check(c.Listen(nil))
 	}()
 
-	if conf.AndroidTv.Host != "" && (oMuteAndroidTv.GetValue() || oPauseAndroidTv.GetValue()) {
+	if conf.AndroidTv.Host != "" {
 		certFile, exists := conf.GetAndroidTvCertificate()
 		if !exists {
 			cleanup.Check("android-tv certificate not found, please pair by calling this binary with `-p`")

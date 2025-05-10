@@ -140,6 +140,10 @@ func AndroidTvInit(a *androidtv.Remote, muting bool, pausing bool) {
 }
 
 func atvUpdateDisplay(dev *octokeyz.Device) error {
+	if atv == nil {
+		return nil
+	}
+
 	c := []byte{' ', ' ', 0}
 	if atvMuting {
 		c[0] = 'M'
@@ -151,11 +155,19 @@ func atvUpdateDisplay(dev *octokeyz.Device) error {
 }
 
 func atvToggleMuting(dev *octokeyz.Device) error {
+	if atv == nil {
+		return nil
+	}
+
 	atvMuting = !atvMuting
 	return atvUpdateDisplay(dev)
 }
 
 func atvTogglePausing(dev *octokeyz.Device) error {
+	if atv == nil {
+		return nil
+	}
+
 	atvPausing = !atvPausing
 	return atvUpdateDisplay(dev)
 }

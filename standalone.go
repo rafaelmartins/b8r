@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/rafaelmartins/b8r/internal/androidtv"
@@ -147,6 +148,11 @@ var (
 
 func standalone() {
 	defer cleanup.Cleanup()
+
+	bi, ok := debug.ReadBuildInfo()
+	if ok {
+		cCli.Version = bi.Main.Version
+	}
 	cCli.Parse()
 
 	conf, err := config.New()

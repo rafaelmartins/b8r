@@ -32,6 +32,10 @@ type Config struct {
 
 	MpvPlugin struct {
 		SerialNumber string `yaml:"serial-number"`
+		AndroidTv    struct {
+			Mute  bool `yaml:"mute"`
+			Pause bool `yaml:"pause"`
+		} `yaml:"android-tv"`
 	} `yaml:"mpv-plugin"`
 
 	Presets []*Preset `yaml:"presets"`

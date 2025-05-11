@@ -63,9 +63,9 @@ func pluginInternal(m *client.MpvIpcClient) error {
 	}
 
 	if conf.AndroidTv.Host != "" {
-		atvMuting, err := envConfBool("B8R_MPV_ATV_MUTE", false)
+		atvMuting, err := envConfBool("B8R_MPV_ATV_MUTE", conf.MpvPlugin.AndroidTv.Mute)
 		cleanup.Check(err)
-		atvPausing, err := envConfBool("B8R_MPV_ATV_PAUSE", false)
+		atvPausing, err := envConfBool("B8R_MPV_ATV_PAUSE", conf.MpvPlugin.AndroidTv.Pause)
 		cleanup.Check(err)
 
 		certFile, exists := conf.GetAndroidTvCertificate()

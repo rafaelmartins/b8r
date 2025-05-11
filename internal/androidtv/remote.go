@@ -155,6 +155,9 @@ func (r *Remote) handle(msg proto.Message) error {
 		r.volMax = rm.RemoteSetVolumeLevel.VolumeMax
 		r.volLevel = rm.RemoteSetVolumeLevel.VolumeLevel
 		r.volMuted = rm.RemoteSetVolumeLevel.VolumeMuted
+		if r.volMax == 0 {
+			return fmt.Errorf("androidtv: can't control volume, please configure android-tv properly")
+		}
 		return nil
 	}
 

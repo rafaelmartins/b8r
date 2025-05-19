@@ -65,11 +65,7 @@ func (r *Remote) Close() error {
 		r.Play()
 	}
 
-	err := r.c.Close()
-	r.startedCh = make(chan struct{})
-	r.started = false
-	r.ignore = false
-	return err
+	return r.c.Close()
 }
 
 func (r *Remote) Listen() error {
@@ -121,15 +117,10 @@ func (r *Remote) handle(msg proto.Message) error {
 	}
 
 	if rm.RemoteStart != nil {
-		if rm.RemoteStart.Started {
-			if r.started {
-				r.ignore = false
-			} else {
-				close(r.startedCh)
-				r.started = true
-			}
-		} else if r.started {
-			r.ignore = true
+		r.ignore = !rm.RemoteStart.Started
+		if !r.started {
+			close(r.startedCh)
+			r.started = true
 		}
 		return nil
 	}
@@ -165,11 +156,11 @@ func (r *Remote) handle(msg proto.Message) error {
 }
 
 func (r *Remote) SendKeyCode(code string) error {
+	<-r.startedCh
+
 	if r.ignore {
 		return nil // avoid spamming commands while the device is not available for it
 	}
-
-	<-r.startedCh
 
 	keycode, found := pb.RemoteKeyCode_value[code]
 	if !found {

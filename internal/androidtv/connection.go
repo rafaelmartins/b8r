@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -22,27 +24,33 @@ type connectionHandler interface {
 }
 
 type connection struct {
-	addr   string
-	conf   *tls.Config
+	dialer *tls.Dialer
 	conn   *tls.Conn
 	closed bool
 }
 
 func newConnection(addr string, cert *tls.Certificate) (*connection, error) {
-	conn := &connection{
-		addr: addr,
-		conf: &tls.Config{
-			Certificates:       []tls.Certificate{*cert},
-			InsecureSkipVerify: true,
+	rv := &connection{
+		dialer: &tls.Dialer{
+			NetDialer: &net.Dialer{
+				Timeout: time.Second,
+			},
+			Config: &tls.Config{
+				Certificates:       []tls.Certificate{*cert},
+				InsecureSkipVerify: true,
+			},
 		},
 	}
 
-	var err error
-	conn.conn, err = tls.Dial("tcp", addr, conn.conf)
+	c, err := rv.dialer.Dial("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	return conn, nil
+	if tc, ok := c.(*tls.Conn); ok {
+		rv.conn = tc
+		return rv, nil
+	}
+	return nil, fmt.Errorf("androidtv: invalid connection")
 }
 
 func (c *connection) Close() error {
@@ -133,7 +141,7 @@ func (c *connection) Write(msg proto.Message) error {
 
 func (c *connection) getClientPublicKey() (*rsa.PublicKey, error) {
 	var crt *x509.Certificate
-	if cs := c.conf.Certificates; len(cs) != 0 && len(cs[0].Certificate) != 0 {
+	if cs := c.dialer.Config.Certificates; len(cs) != 0 && len(cs[0].Certificate) != 0 {
 		var err error
 		crt, err = x509.ParseCertificate(cs[0].Certificate[0])
 		if err != nil {

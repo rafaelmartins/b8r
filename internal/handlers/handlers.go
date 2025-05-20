@@ -154,21 +154,35 @@ func atvUpdateDisplay(dev *octokeyz.Device) error {
 	return utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine2, string(c), octokeyz.DisplayLineAlignRight))
 }
 
-func atvToggleMuting(dev *octokeyz.Device) error {
+func atvToggleMuting(dev *octokeyz.Device, m *client.MpvIpcClient) error {
 	if atv == nil {
 		return nil
 	}
 
 	atvMuting = !atvMuting
+	if atvMuting {
+		if idle, err := m.GetPropertyBool("idle"); err == nil && !idle {
+			if err := atv.Mute(); err != nil {
+				return err
+			}
+		}
+	}
 	return atvUpdateDisplay(dev)
 }
 
-func atvTogglePausing(dev *octokeyz.Device) error {
+func atvTogglePausing(dev *octokeyz.Device, m *client.MpvIpcClient) error {
 	if atv == nil {
 		return nil
 	}
 
 	atvPausing = !atvPausing
+	if atvPausing {
+		if idle, err := m.GetPropertyBool("idle"); err == nil && !idle {
+			if err := atv.Pause(); err != nil {
+				return err
+			}
+		}
+	}
 	return atvUpdateDisplay(dev)
 }
 
@@ -336,7 +350,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 				return err
 			},
 			func(b *octokeyz.Button) error {
-				return atvTogglePausing(dev)
+				return atvTogglePausing(dev, m)
 			},
 		))
 	} else {
@@ -381,7 +395,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 				return err
 			},
 			func(b *octokeyz.Button) error {
-				return atvTogglePausing(dev)
+				return atvTogglePausing(dev, m)
 			},
 		))
 	}
@@ -411,7 +425,7 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 			return err
 		},
 		func(b *octokeyz.Button) error {
-			return atvToggleMuting(dev)
+			return atvToggleMuting(dev, m)
 		},
 	))
 

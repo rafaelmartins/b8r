@@ -154,19 +154,35 @@ func atvUpdateDisplay(dev *octokeyz.Device) error {
 	return utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine2, string(c), octokeyz.DisplayLineAlignRight))
 }
 
+func mpvIsPlaying(m *client.MpvIpcClient) bool {
+	if idle, err := m.GetPropertyBool("idle-active"); err == nil && idle {
+		return false
+	}
+	if pause, err := m.GetPropertyBool("pause"); err == nil && pause {
+		return false
+	}
+	return true
+}
+
 func atvToggleMuting(dev *octokeyz.Device, m *client.MpvIpcClient) error {
 	if atv == nil {
 		return nil
 	}
 
 	atvMuting = !atvMuting
-	if atvMuting {
-		if idle, err := m.GetPropertyBool("idle"); err == nil && !idle {
-			if err := atv.Mute(); err != nil {
-				return err
-			}
+
+	if mpvIsPlaying(m) {
+		var err error
+		if atvMuting {
+			err = atv.Mute()
+		} else {
+			err = atv.Unmute()
+		}
+		if err != nil {
+			return err
 		}
 	}
+
 	return atvUpdateDisplay(dev)
 }
 
@@ -176,13 +192,19 @@ func atvTogglePausing(dev *octokeyz.Device, m *client.MpvIpcClient) error {
 	}
 
 	atvPausing = !atvPausing
-	if atvPausing {
-		if idle, err := m.GetPropertyBool("idle"); err == nil && !idle {
-			if err := atv.Pause(); err != nil {
-				return err
-			}
+
+	if mpvIsPlaying(m) {
+		var err error
+		if atvPausing {
+			err = atv.Pause()
+		} else {
+			err = atv.Play()
+		}
+		if err != nil {
+			return err
 		}
 	}
+
 	return atvUpdateDisplay(dev)
 }
 

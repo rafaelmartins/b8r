@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964
-	github.com/goccy/go-yaml v1.17.1
+	github.com/goccy/go-yaml v1.18.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/ebitengine/purego v0.8.2 // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	rafaelmartins.com/p/usbhid v0.0.0-20250410000010-9633b3e8793d // indirect
 )

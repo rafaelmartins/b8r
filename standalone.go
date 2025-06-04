@@ -332,7 +332,7 @@ func standalone() {
 	}
 
 	cleanup.Check(handlers.RegisterMPVHandlers(dev, c, fmute, hsrc != nil))
-	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc))
+	cleanup.Check(handlers.RegisterOctokeyzHandlers(dev, c, hsrc, false))
 
 	if fstart {
 		cleanup.Check(handlers.LoadNextFile(c, src))

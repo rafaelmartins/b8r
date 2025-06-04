@@ -307,7 +307,7 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	return err
 }
 
-func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src *source.Source) error {
+func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src *source.Source, plugin bool) error {
 	if dev == nil {
 		return errors.New("handlers: missing device")
 	}
@@ -376,9 +376,11 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 			},
 		))
 	} else {
-		// as this is used by plugin, we won't get the restart-playback event the first time
-		if err := atvMute(); err != nil {
-			return err
+		if plugin {
+			// as this is used by plugin, we won't get the restart-playback event the first time
+			if err := atvMute(); err != nil {
+				return err
+			}
 		}
 
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,

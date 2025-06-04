@@ -97,7 +97,7 @@ func pluginInternal(m *client.MpvIpcClient) error {
 		return err
 	}
 
-	if err := handlers.RegisterOctokeyzHandlers(dev, m, nil); err != nil {
+	if err := handlers.RegisterOctokeyzHandlers(dev, m, nil, true); err != nil {
 		return err
 	}
 

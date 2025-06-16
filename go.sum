@@ -12,7 +12,7 @@ google.golang.org/protobuf v1.36.6 h1:z1NpPI8ku2WgiWnf+t9wTPsn6eP1L7ksHUlkfLvd9x
 google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7GC73Ei8pv4MzjDUNPHgQWJdtMAaDU=
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
-rafaelmartins.com/p/octokeyz v0.0.0-20250302013057-b87bac722abb h1:/f3LPCtE/m+YZ0+W4qZlBQMWRP6e+kHiesPJ6R20UMQ=
-rafaelmartins.com/p/octokeyz v0.0.0-20250302013057-b87bac722abb/go.mod h1:oV8Nd+WazHh431T2+vJEN0AL2wUqoPv2JQJSnTB/E8g=
-rafaelmartins.com/p/usbhid v0.0.0-20250410000010-9633b3e8793d h1:YCChGPlqIs9YC9pnZS2JGv7VsZtsT7yBylN/maGcaOs=
-rafaelmartins.com/p/usbhid v0.0.0-20250410000010-9633b3e8793d/go.mod h1:focKssvBxJwZE6GrEZipSBZsUwsFkcc0ECSq/In1Kww=
+rafaelmartins.com/p/octokeyz v0.0.0-20250616003641-aab7ed89f7fe h1:9E5CznjBCk8/tAfcZt8BGFACChvNxYsvgozAKRsW0NA=
+rafaelmartins.com/p/octokeyz v0.0.0-20250616003641-aab7ed89f7fe/go.mod h1:JSbydFL2dK7NVZODcMDeTSG1Y4Im3qyCZfW4URgpHWw=
+rafaelmartins.com/p/usbhid v0.0.0-20250616003425-c818f1cb579e h1:Xlg01Rbs6PVG1yOvNEmMjI+edsmua23REsPO+tyhOyU=
+rafaelmartins.com/p/usbhid v0.0.0-20250616003425-c818f1cb579e/go.mod h1:focKssvBxJwZE6GrEZipSBZsUwsFkcc0ECSq/In1Kww=

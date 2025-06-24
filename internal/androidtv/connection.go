@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
+	"syscall"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -24,6 +26,8 @@ type connectionHandler interface {
 }
 
 type connection struct {
+	m      sync.Mutex
+	addr   string
 	dialer *tls.Dialer
 	conn   *tls.Conn
 	closed bool
@@ -31,6 +35,7 @@ type connection struct {
 
 func newConnection(addr string, cert *tls.Certificate) (*connection, error) {
 	rv := &connection{
+		addr: addr,
 		dialer: &tls.Dialer{
 			NetDialer: &net.Dialer{
 				Timeout: time.Second,
@@ -42,15 +47,44 @@ func newConnection(addr string, cert *tls.Certificate) (*connection, error) {
 		},
 	}
 
-	c, err := rv.dialer.Dial("tcp", addr)
-	if err != nil {
+	if err := rv.dial(); err != nil {
 		return nil, err
 	}
-	if tc, ok := c.(*tls.Conn); ok {
-		rv.conn = tc
-		return rv, nil
+	return rv, nil
+}
+
+func (c *connection) dial() error {
+	if !c.m.TryLock() {
+		return nil
 	}
-	return nil, fmt.Errorf("androidtv: invalid connection")
+	defer c.m.Unlock()
+
+	if c.conn != nil {
+		c.conn.Close()
+		c.conn = nil
+	}
+
+	conn, err := c.dialer.Dial("tcp", c.addr)
+	if err != nil {
+		return err
+	}
+	if tc, ok := conn.(*tls.Conn); ok {
+		c.conn = tc
+		return nil
+	}
+	return fmt.Errorf("androidtv: invalid connection")
+}
+
+func (c *connection) redial() error {
+	var err error
+	for range 5 {
+		err = c.dial()
+		if err == nil {
+			return nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return err
 }
 
 func (c *connection) Close() error {
@@ -59,7 +93,10 @@ func (c *connection) Close() error {
 	}
 
 	c.closed = true
-	return c.conn.Close()
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return nil
 }
 
 func (c *connection) Listen(ch connectionHandler) error {
@@ -70,13 +107,30 @@ func (c *connection) Listen(ch connectionHandler) error {
 	buf := make([]byte, 256)
 
 	for {
+		if c.closed {
+			return nil
+		}
+
 		rv := []byte{}
 		toRead := 0
 
 		for {
-			n, err := c.conn.Read(buf)
-			if err == io.EOF || c.closed {
+			if c.closed {
 				return nil
+			}
+
+			n, err := c.conn.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				if errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) {
+					if err := c.redial(); err != nil {
+						return err
+					}
+					continue
+				}
+				return err
 			}
 			if n == 0 {
 				continue
@@ -126,7 +180,15 @@ func (c *connection) Write(msg proto.Message) error {
 	}
 
 	if n, err := c.conn.Write([]byte{byte(l)}); err != nil {
-		return fmt.Errorf("androidtv: failed to send protobuf message length: %w", err)
+		foundErr := true
+		if errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ECONNRESET) {
+			if err := c.redial(); err == nil {
+				foundErr = false
+			}
+		}
+		if foundErr {
+			return fmt.Errorf("androidtv: failed to send protobuf message length: %w", err)
+		}
 	} else if n != 1 {
 		return fmt.Errorf("androidtv: failed to send protobuf message length: failed to write")
 	}

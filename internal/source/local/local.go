@@ -65,9 +65,20 @@ func rel(base string, target string) (string, error) {
 }
 
 func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, error) {
-	ent := append([]string{}, entries...)
+	ent := []string{}
+	for _, e := range entries {
+		p, err := filepath.Abs(e)
+		if err != nil {
+			return nil, false, err
+		}
+		ent = append(ent, p)
+	}
 	if l := len(ent); l == 0 {
-		ent = append(ent, ".")
+		d, err := os.Getwd()
+		if err != nil {
+			return nil, false, err
+		}
+		ent = append(ent, d)
 	}
 
 	f.root = commonRoot(ent)
@@ -103,11 +114,7 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 				}
 
 				if info.Mode().IsRegular() {
-					e, err := rel(f.root, path)
-					if err != nil {
-						return err
-					}
-					rv = append(rv, e)
+					rv = append(rv, path)
 				}
 
 				return nil
@@ -118,20 +125,16 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 		}
 
 		if info.Mode().IsRegular() {
-			e, err := rel(f.root, entry)
-			if err != nil {
-				return nil, false, err
-			}
-			rv = append(rv, e)
+			rv = append(rv, entry)
 			continue
 		}
 	}
 
-	return rv, len(entries) == 1 && len(rv) == 1 && filepath.Clean(entries[0]) == filepath.Join(f.root, rv[0]), nil
+	return rv, len(entries) == 1 && len(rv) == 1 && entries[0] == rv[0], nil
 }
 
 func (f *LocalSource) GetFile(key string) (string, error) {
-	return filepath.Join(f.root, key), nil
+	return key, nil
 }
 
 func (f *LocalSource) GetMimeType(key string) (string, error) {
@@ -144,5 +147,14 @@ func (f *LocalSource) GetMimeType(key string) (string, error) {
 
 func (f *LocalSource) CompletionHandler(prev string, cur string) []string {
 	// empty list means that bash will list files
+	return nil
+}
+
+func (f *LocalSource) FormatEntry(key string) (string, error) {
+	return rel(f.root, key)
+}
+
+func (f *LocalSource) SetItems(items []string) error {
+	f.root = commonRoot(items)
 	return nil
 }

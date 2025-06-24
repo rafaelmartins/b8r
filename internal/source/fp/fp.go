@@ -133,3 +133,11 @@ func (f *FpSource) CompletionHandler(prev string, cur string) []string {
 	}
 	return rv
 }
+
+func (f *FpSource) FormatEntry(key string) (string, error) {
+	return key, nil
+}
+
+func (f *FpSource) SetItems(items []string) error {
+	return nil
+}

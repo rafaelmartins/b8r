@@ -103,3 +103,11 @@ func (c *Config) GetAndroidTvCertificate() (string, bool) {
 	_, err := os.Stat(rv)
 	return rv, !errors.Is(err, os.ErrNotExist)
 }
+
+func (c *Config) GetTablesDirectory() (string, error) {
+	rv := filepath.Join(c.dir, "tables")
+	if err := os.MkdirAll(filepath.Dir(rv), 0777); err != nil {
+		return "", err
+	}
+	return rv, nil
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/rafaelmartins/b8r/internal/cleanup"
 	"github.com/rafaelmartins/b8r/internal/cli"
 	"github.com/rafaelmartins/b8r/internal/config"
+	"github.com/rafaelmartins/b8r/internal/dataset"
 	"github.com/rafaelmartins/b8r/internal/handlers"
 	"github.com/rafaelmartins/b8r/internal/mpv/client"
 	"github.com/rafaelmartins/b8r/internal/mpv/server"
@@ -96,18 +97,29 @@ var (
 			return rv
 		},
 	}
-	aPresetOrSource = &cli.Argument{
-		Name:     "preset-or-source",
+	oTable = &cli.StringOption{
+		Name:    't',
+		Default: "",
+		Help:    "create and load table from current source/preset",
+		Metavar: "TABLE",
+	}
+	aPresetOrSourceOrTable = &cli.Argument{
+		Name:     "preset-or-source-or-table",
 		Required: false,
-		Help:     "a preset or a source to use",
+		Help:     "a preset or a source or a table to load from",
 		CompletionHandler: func(prev string, cur string) []string {
 			c, err := config.New()
 			if err != nil {
 				return nil
 			}
 
+			d, err := c.GetTablesDirectory()
+			if err != nil {
+				return nil
+			}
+
 			rv := []string{}
-			for _, c := range append(source.List(), c.ListPresets()...) {
+			for _, c := range append(append(source.List(), c.ListPresets()...), dataset.ListTables(d)...) {
 				if strings.HasPrefix(c, cur) {
 					rv = append(rv, c)
 				}
@@ -138,9 +150,10 @@ var (
 			oInclude,
 			oExclude,
 			oSerialNumber,
+			oTable,
 		},
 		Arguments: []*cli.Argument{
-			aPresetOrSource,
+			aPresetOrSourceOrTable,
 			aEntries,
 		},
 	}
@@ -197,12 +210,11 @@ func standalone() {
 		return
 	}
 
-	if !aPresetOrSource.IsSet() {
-		cCli.Usage(false, "PRESET_OR_SOURCE argument required unless setting `-p'")
+	if !aPresetOrSourceOrTable.IsSet() {
+		cCli.Usage(false, "PRESET_OR_SOURCE_OR_TABLE argument required unless setting `-p'")
 		cleanup.Exit(1)
 	}
 
-	srcName := ""
 	entries := []string{}
 	fmute := oMute.Default
 	frand := oRand.Default
@@ -211,7 +223,15 @@ func standalone() {
 	finclude := oInclude.Default
 	fexclude := oExclude.Default
 
-	if p := conf.GetPreset(aPresetOrSource.GetValue()); p != nil {
+	srcName := ""
+	tableName := ""
+	tableCreate := false
+	if d, err := conf.GetTablesDirectory(); err == nil && dataset.TableExists(d, aPresetOrSourceOrTable.GetValue()) {
+		tableName = aPresetOrSourceOrTable.GetValue()
+		src, err := dataset.TableSource(d, aPresetOrSourceOrTable.GetValue())
+		cleanup.Check(err)
+		srcName = src
+	} else if p := conf.GetPreset(aPresetOrSourceOrTable.GetValue()); p != nil {
 		srcName = p.Source
 		if p.Entries != nil {
 			entries = p.Entries
@@ -235,10 +255,15 @@ func standalone() {
 			fexclude = *p.Exclude
 		}
 	} else {
-		srcName = aPresetOrSource.GetValue()
+		srcName = aPresetOrSourceOrTable.GetValue()
 		if aEntries.IsSet() {
 			entries = aEntries.GetValues()
 		}
+	}
+
+	if tableName == "" && oTable.GetValue() != "" {
+		tableName = oTable.GetValue()
+		tableCreate = true
 	}
 
 	if oMute.IsSet() {
@@ -263,7 +288,10 @@ func standalone() {
 	src, err := source.New(srcName)
 	cleanup.Check(err)
 
-	singleEntry, err := src.SetEntries(entries, frecursive, frand, finclude, fexclude)
+	tableDir, err := conf.GetTablesDirectory()
+	cleanup.Check(err)
+
+	singleEntry, err := src.SetEntries(tableDir, tableName, tableCreate, entries, frecursive, frand, finclude, fexclude)
 	cleanup.Check(err)
 
 	hsrc := src

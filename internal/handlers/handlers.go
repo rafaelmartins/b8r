@@ -26,6 +26,7 @@ var (
 	waitingPlayback = false
 	current         = ""
 	next            = ""
+	supportsNext    = false
 	idxTotal        = 0
 	idxCurrent      = 0
 
@@ -250,25 +251,33 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 		return errors.New("handlers: missing source")
 	}
 
-	current = next
-
 	var err error
-	if current == "" {
-		current, err = src.NextEntry()
-		if err != nil {
-			return err
-		}
+	current, err = src.NextEntry()
+	if err != nil {
+		return err
 	}
 
 	idxTotal = src.GetEntriesCount()
 	idxCurrent = idxTotal - src.GetCurrentEntriesCount()
 
-	next, err = src.NextEntry()
+	next, supportsNext, err = src.LookAheadEntry()
 	if err != nil {
 		return err
 	}
 
+	if supportsNext {
+		next, err = src.FormatEntry(next)
+		if err != nil {
+			return err
+		}
+	}
+
 	file, err := src.GetFile(current)
+	if err != nil {
+		return err
+	}
+
+	current, err = src.FormatEntry(current)
 	if err != nil {
 		return err
 	}
@@ -320,21 +329,30 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 	}
 
 	if src != nil {
+		idxTotal = src.GetEntriesCount()
+		idxCurrent = idxTotal - src.GetCurrentEntriesCount()
+
 		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine3, fmt.Sprintf("Source: %s", src.GetBackendName()), octokeyz.DisplayLineAlignLeft)); err != nil {
 			return err
 		}
-		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fmt.Sprintf("0 / %d", src.GetEntriesCount()), octokeyz.DisplayLineAlignLeft)); err != nil {
+		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine4, fmt.Sprintf("%d / %d", idxCurrent, idxTotal), octokeyz.DisplayLineAlignLeft)); err != nil {
 			return err
 		}
 
 		var err error
-		next, err = src.NextEntry()
+		next, supportsNext, err = src.LookAheadEntry()
 		if err != nil {
 			return err
 		}
 
-		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine7, fmt.Sprintf("N: %s", next), octokeyz.DisplayLineAlignLeft)); err != nil {
-			return err
+		if supportsNext {
+			next, err = src.FormatEntry(next)
+			if err != nil {
+				return err
+			}
+			if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine7, fmt.Sprintf("N: %s", next), octokeyz.DisplayLineAlignLeft)); err != nil {
+				return err
+			}
 		}
 
 		dev.AddHandler(octokeyz.BUTTON_1, octokeyzHandler(dev,
@@ -562,7 +580,7 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool
 		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine6, fmt.Sprintf("C: %s", current), octokeyz.DisplayLineAlignLeft)); err != nil {
 			return err
 		}
-		if withNext {
+		if withNext && supportsNext {
 			if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine7, fmt.Sprintf("N: %s", next), octokeyz.DisplayLineAlignLeft)); err != nil {
 				return err
 			}

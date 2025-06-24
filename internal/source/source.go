@@ -18,6 +18,8 @@ type SourceBackend interface {
 	GetFile(key string) (string, error)
 	GetMimeType(key string) (string, error)
 	CompletionHandler(prev string, cur string) []string
+	FormatEntry(key string) (string, error)
+	SetItems(items []string) error
 }
 
 var registry = []SourceBackend{
@@ -88,7 +90,7 @@ func (s *Source) GetEntriesCount() int {
 }
 
 func (s *Source) GetCurrentEntriesCount() int {
-	return s.entries.CurLen()
+	return s.entries.CLen()
 }
 
 func (s *Source) isMimeTypeSupported(key string) bool {
@@ -100,40 +102,57 @@ func (s *Source) isMimeTypeSupported(key string) bool {
 	return strings.HasPrefix(mt, "image/") || strings.HasPrefix(mt, "video/")
 }
 
-func (s *Source) SetEntries(entries []string, recursive bool, randomize bool, include string, exclude string) (bool, error) {
+func (s *Source) SetEntries(tableDir string, tableName string, tableCreate bool, entries []string, recursive bool, randomize bool, include string, exclude string) (bool, error) {
 	if s.entries != nil {
 		return false, errors.New("source: entries already set")
 	}
 
-	inc, err := regexp.Compile(include)
-	if err != nil {
-		return false, err
-	}
-
-	exc, err := regexp.Compile(exclude)
-	if err != nil {
-		return false, err
-	}
-
-	lr, single, err := s.backend.List(entries, recursive)
-	if err != nil {
-		return false, err
-	}
-
-	sort.Strings(lr)
-
 	l := []string{}
-
-	for _, v := range lr {
-		if toInclude(inc, v) && !toExclude(exc, v) && (s.backend.Remote() || s.isMimeTypeSupported(v)) {
-			l = append(l, v)
+	single := false
+	loaded := false
+	if tableName == "" || tableCreate {
+		inc, err := regexp.Compile(include)
+		if err != nil {
+			return false, err
 		}
+
+		exc, err := regexp.Compile(exclude)
+		if err != nil {
+			return false, err
+		}
+
+		lr, si, err := s.backend.List(entries, recursive)
+		if err != nil {
+			return false, err
+		}
+		single = si
+
+		sort.Strings(lr)
+
+		for _, v := range lr {
+			if toInclude(inc, v) && !toExclude(exc, v) && (s.backend.Remote() || s.isMimeTypeSupported(v)) {
+				l = append(l, v)
+			}
+		}
+		loaded = true
 	}
 
-	s.entries = dataset.New(l, randomize)
+	var err error
+	s.entries, err = dataset.New(tableDir, tableName, tableCreate, s.backend.Name(), l, randomize)
+	if err != nil {
+		return false, err
+	}
+
 	if s.entries.Len() == 0 {
 		return false, errors.New("source: failed to retrieve entries")
 	}
+
+	if !loaded {
+		if err := s.backend.SetItems(s.entries.GetItems()); err != nil {
+			return false, err
+		}
+	}
+
 	return single, nil
 }
 
@@ -142,6 +161,20 @@ func (s *Source) NextEntry() (string, error) {
 		return s.entries.Next()
 	}
 	return "", errors.New("source: entries not set")
+}
+
+func (s *Source) LookAheadEntry() (string, bool, error) {
+	if s.entries != nil {
+		rv, err := s.entries.LookAhead()
+		if err != nil {
+			if errors.Is(err, dataset.ErrLookAheadNotSupported) {
+				return "", false, nil
+			}
+			return "", false, err
+		}
+		return rv, true, nil
+	}
+	return "", false, errors.New("source: entries not set")
 }
 
 func (s *Source) ForEachEntry(f func(e string)) error {
@@ -153,4 +186,8 @@ func (s *Source) ForEachEntry(f func(e string)) error {
 
 func (s *Source) GetFile(key string) (string, error) {
 	return s.backend.GetFile(key)
+}
+
+func (s *Source) FormatEntry(key string) (string, error) {
+	return s.backend.FormatEntry(key)
 }

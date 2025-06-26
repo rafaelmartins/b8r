@@ -231,21 +231,29 @@ func (d *DataSet) refill() error {
 	return nil
 }
 
-func (d *DataSet) pick() (string, error) {
+func (d *DataSet) getIDs() ([]int, error) {
 	if d.len() == 0 {
-		return "", ErrEmpty
+		return nil, ErrEmpty
 	}
 	if d.clen() == 0 {
 		if err := d.refill(); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
 	tmp, err := d.db.IDs(d.table)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	slices.Sort(tmp)
+	return tmp, nil
+}
+
+func (d *DataSet) pick() (string, error) {
+	tmp, err := d.getIDs()
+	if err != nil {
+		return "", err
+	}
 
 	idx := 0
 	if d.randomize {
@@ -323,13 +331,17 @@ func (d *DataSet) ForEach(f func(e string)) error {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 
-	if len(d.items) == 0 {
+	tmp, err := d.getIDs()
+	if err != nil {
+		return err
+	}
+
+	if len(tmp) == 0 {
 		return nil
 	}
 
-	tmp := append([]string{}, d.items...)
-	for i := 0; i < len(d.items); i++ {
-		next := ""
+	for i := range len(tmp) {
+		id := 0
 		if d.randomize {
 			bidx, err := rand.Int(rand.Reader, big.NewInt(int64(len(tmp))))
 			if err != nil {
@@ -337,12 +349,18 @@ func (d *DataSet) ForEach(f func(e string)) error {
 			}
 
 			idx := int(bidx.Int64())
-			next = tmp[idx]
+			id = tmp[idx]
 			tmp = append(tmp[:idx], tmp[idx+1:]...)
 		} else {
-			next = tmp[i]
+			id = tmp[i]
 		}
-		f(next)
+
+		v := entry{}
+		if err := d.db.Find(d.table, id, &v); err != nil {
+			return err
+		}
+
+		f(v.Entry)
 	}
 	return nil
 }

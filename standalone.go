@@ -302,7 +302,9 @@ func standalone() {
 
 	if oDump.GetValue() {
 		cleanup.Check(src.ForEachEntry(func(e string) {
-			fmt.Println(e)
+			ee, err := src.FormatEntry(e)
+			cleanup.Check(err)
+			fmt.Println(ee)
 		}))
 		return
 	}

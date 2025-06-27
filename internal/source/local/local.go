@@ -130,7 +130,15 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 		}
 	}
 
-	return rv, len(entries) == 1 && len(rv) == 1 && entries[0] == rv[0], nil
+	single := false
+	if len(entries) == 1 && len(rv) == 1 {
+		entry, err := filepath.Abs(entries[0])
+		if err != nil {
+			return nil, false, err
+		}
+		single = entry == rv[0]
+	}
+	return rv, single, nil
 }
 
 func (f *LocalSource) GetFile(key string) (string, error) {

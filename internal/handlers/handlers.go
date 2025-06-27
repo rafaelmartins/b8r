@@ -252,21 +252,21 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	}
 
 	var err error
-	current, err = src.NextEntry()
+	current, err = src.NextItem()
 	if err != nil {
 		return err
 	}
 
-	idxTotal = src.GetEntriesCount()
-	idxCurrent = idxTotal - src.GetCurrentEntriesCount()
+	idxTotal = src.GetItemsCount()
+	idxCurrent = idxTotal - src.GetCurrentItemsCount()
 
-	next, supportsNext, err = src.LookAheadEntry()
+	next, supportsNext, err = src.LookAheadItem()
 	if err != nil {
 		return err
 	}
 
 	if supportsNext {
-		next, err = src.FormatEntry(next)
+		next, err = src.FormatItem(next)
 		if err != nil {
 			return err
 		}
@@ -277,7 +277,7 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 		return err
 	}
 
-	current, err = src.FormatEntry(current)
+	current, err = src.FormatItem(current)
 	if err != nil {
 		return err
 	}
@@ -329,8 +329,8 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 	}
 
 	if src != nil {
-		idxTotal = src.GetEntriesCount()
-		idxCurrent = idxTotal - src.GetCurrentEntriesCount()
+		idxTotal = src.GetItemsCount()
+		idxCurrent = idxTotal - src.GetCurrentItemsCount()
 
 		if err := utils.IgnoreDisplayMissing(dev.DisplayLine(octokeyz.DisplayLine3, fmt.Sprintf("Source: %s", src.GetBackendName()), octokeyz.DisplayLineAlignLeft)); err != nil {
 			return err
@@ -340,13 +340,13 @@ func RegisterOctokeyzHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, src 
 		}
 
 		var err error
-		next, supportsNext, err = src.LookAheadEntry()
+		next, supportsNext, err = src.LookAheadItem()
 		if err != nil {
 			return err
 		}
 
 		if supportsNext {
-			next, err = src.FormatEntry(next)
+			next, err = src.FormatItem(next)
 			if err != nil {
 				return err
 			}

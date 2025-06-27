@@ -301,8 +301,8 @@ func standalone() {
 	}
 
 	if oDump.GetValue() {
-		cleanup.Check(src.ForEachEntry(func(e string) {
-			ee, err := src.FormatEntry(e)
+		cleanup.Check(src.ForEachItem(func(e string) {
+			ee, err := src.FormatItem(e)
 			cleanup.Check(err)
 			fmt.Println(ee)
 		}))

@@ -134,7 +134,7 @@ func (f *FpSource) CompletionHandler(prev string, cur string) []string {
 	return rv
 }
 
-func (f *FpSource) FormatEntry(key string) (string, error) {
+func (f *FpSource) FormatItem(key string) (string, error) {
 	return key, nil
 }
 

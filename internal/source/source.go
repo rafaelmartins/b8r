@@ -18,7 +18,7 @@ type SourceBackend interface {
 	GetFile(key string) (string, error)
 	GetMimeType(key string) (string, error)
 	CompletionHandler(prev string, cur string) []string
-	FormatEntry(key string) (string, error)
+	FormatItem(key string) (string, error)
 	SetItems(items []string) error
 }
 
@@ -29,7 +29,7 @@ var registry = []SourceBackend{
 
 type Source struct {
 	backend SourceBackend
-	entries *dataset.DataSet
+	items   *dataset.DataSet
 }
 
 func List() []string {
@@ -85,12 +85,12 @@ func (s *Source) GetBackendName() string {
 	return s.backend.Name()
 }
 
-func (s *Source) GetEntriesCount() int {
-	return s.entries.Len()
+func (s *Source) GetItemsCount() int {
+	return s.items.Len()
 }
 
-func (s *Source) GetCurrentEntriesCount() int {
-	return s.entries.CLen()
+func (s *Source) GetCurrentItemsCount() int {
+	return s.items.CLen()
 }
 
 func (s *Source) isMimeTypeSupported(key string) bool {
@@ -103,7 +103,7 @@ func (s *Source) isMimeTypeSupported(key string) bool {
 }
 
 func (s *Source) SetEntries(tableDir string, tableName string, tableCreate bool, entries []string, recursive bool, randomize bool, include string, exclude string) (bool, error) {
-	if s.entries != nil {
+	if s.items != nil {
 		return false, errors.New("source: entries already set")
 	}
 
@@ -138,17 +138,17 @@ func (s *Source) SetEntries(tableDir string, tableName string, tableCreate bool,
 	}
 
 	var err error
-	s.entries, err = dataset.New(tableDir, tableName, tableCreate, s.backend.Name(), l, randomize)
+	s.items, err = dataset.New(tableDir, tableName, tableCreate, s.backend.Name(), l, randomize)
 	if err != nil {
 		return false, err
 	}
 
-	if s.entries.Len() == 0 {
-		return false, errors.New("source: failed to retrieve entries")
+	if s.items.Len() == 0 {
+		return false, errors.New("source: failed to retrieve items")
 	}
 
 	if !loaded {
-		if err := s.backend.SetItems(s.entries.GetItems()); err != nil {
+		if err := s.backend.SetItems(s.items.GetItems()); err != nil {
 			return false, err
 		}
 	}
@@ -156,38 +156,39 @@ func (s *Source) SetEntries(tableDir string, tableName string, tableCreate bool,
 	return single, nil
 }
 
-func (s *Source) NextEntry() (string, error) {
-	if s.entries != nil {
-		return s.entries.Next()
+func (s *Source) NextItem() (string, error) {
+	if s.items == nil {
+		return "", errors.New("source: items not set")
 	}
-	return "", errors.New("source: entries not set")
+	return s.items.Next()
 }
 
-func (s *Source) LookAheadEntry() (string, bool, error) {
-	if s.entries != nil {
-		rv, err := s.entries.LookAhead()
-		if err != nil {
-			if errors.Is(err, dataset.ErrLookAheadNotSupported) {
-				return "", false, nil
-			}
-			return "", false, err
+func (s *Source) LookAheadItem() (string, bool, error) {
+	if s.items == nil {
+		return "", false, errors.New("source: items not set")
+	}
+
+	rv, err := s.items.LookAhead()
+	if err != nil {
+		if errors.Is(err, dataset.ErrLookAheadNotSupported) {
+			return "", false, nil
 		}
-		return rv, true, nil
+		return "", false, err
 	}
-	return "", false, errors.New("source: entries not set")
+	return rv, true, nil
 }
 
-func (s *Source) ForEachEntry(f func(e string)) error {
-	if s.entries != nil {
-		return s.entries.ForEach(f)
+func (s *Source) ForEachItem(f func(e string)) error {
+	if s.items == nil {
+		return errors.New("source: items not set")
 	}
-	return errors.New("source: entries not set")
+	return s.items.ForEach(f)
 }
 
 func (s *Source) GetFile(key string) (string, error) {
 	return s.backend.GetFile(key)
 }
 
-func (s *Source) FormatEntry(key string) (string, error) {
-	return s.backend.FormatEntry(key)
+func (s *Source) FormatItem(key string) (string, error) {
+	return s.backend.FormatItem(key)
 }

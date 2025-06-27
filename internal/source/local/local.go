@@ -150,7 +150,7 @@ func (f *LocalSource) CompletionHandler(prev string, cur string) []string {
 	return nil
 }
 
-func (f *LocalSource) FormatEntry(key string) (string, error) {
+func (f *LocalSource) FormatItem(key string) (string, error) {
 	return rel(f.root, key)
 }
 

@@ -3,7 +3,9 @@ package local
 import (
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/rafaelmartins/b8r/internal/mime"
 )
@@ -92,7 +94,7 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 		if info.IsDir() {
 			root := true
 
-			if err := filepath.WalkDir(entry, func(path string, d fs.DirEntry, err error) error {
+			if err := filepath.WalkDir(entry, func(p string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return nil
 				}
@@ -105,6 +107,13 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 					if !recursive {
 						return fs.SkipDir
 					}
+					if strings.HasPrefix(path.Base(p), ".") {
+						return fs.SkipDir
+					}
+					return nil
+				}
+
+				if strings.HasPrefix(path.Base(p), ".") {
 					return nil
 				}
 
@@ -114,7 +123,7 @@ func (f *LocalSource) List(entries []string, recursive bool) ([]string, bool, er
 				}
 
 				if info.Mode().IsRegular() {
-					rv = append(rv, path)
+					rv = append(rv, p)
 				}
 
 				return nil

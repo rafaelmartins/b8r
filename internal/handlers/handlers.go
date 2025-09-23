@@ -30,6 +30,8 @@ var (
 	idxTotal        = 0
 	idxCurrent      = 0
 
+	displayAspect = 0.
+
 	atv        *androidtv.Remote
 	atvMuting  = false
 	atvPausing = false
@@ -309,6 +311,9 @@ func LoadNextFile(m *client.MpvIpcClient, src *source.Source) error {
 	if err := m.SetProperty("video-zoom", 0); err != nil {
 		return err
 	}
+	if err := m.SetProperty("panscan", 0); err != nil {
+		return err
+	}
 
 	waitingPlayback = true
 
@@ -569,6 +574,29 @@ func RegisterMPVHandlers(dev *octokeyz.Device, m *client.MpvIpcClient, mute bool
 		}
 		if err := mp.SetProperty("pause", false); err != nil {
 			return err
+		}
+
+		if displayAspect == 0. {
+			dwidth, err := m.GetPropertyFloat64("display-width")
+			if err != nil {
+				return err
+			}
+			dheight, err := m.GetPropertyFloat64("display-height")
+			if err != nil {
+				return err
+			}
+			displayAspect = dwidth / dheight
+		}
+
+		aspect, err := m.GetPropertyFloat64("video-dec-params/aspect")
+		if err != nil {
+			return err
+		}
+
+		if aspect > 1 && aspect < 2 && aspect > displayAspect {
+			if err := mp.SetProperty("panscan", 1); err != nil {
+				return err
+			}
 		}
 
 		fmt.Printf("Playing: %s\n", current)

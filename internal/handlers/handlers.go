@@ -57,8 +57,8 @@ func octokeyzHandler(dev *octokeyz.Device, short octokeyz.ButtonHandler, long oc
 			}
 		}()
 
-		pressed := mod.Pressed()
 		duration := b.WaitForRelease()
+		pressed := mod.Pressed()
 
 		close(done)
 

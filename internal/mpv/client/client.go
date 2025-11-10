@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net"
 	"os"
 	"slices"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -32,6 +34,7 @@ type MpvIpcClient struct {
 	conn       io.ReadWriteCloser
 	closed     bool
 	dumpEvents bool
+	pipeValid  bool
 
 	pmtx       sync.Mutex
 	propertyID uint
@@ -209,10 +212,16 @@ func (m *MpvIpcClient) CommandWithContext(ctx context.Context, args ...any) (any
 
 	n, err := m.conn.Write(data)
 	if err != nil {
+		if eerr, ok := err.(*fs.PathError); ok && errors.Is(eerr.Err, syscall.EPIPE) && eerr.Path == "pipe" && !m.pipeValid {
+			return nil, nil
+		}
 		return nil, err
 	}
 	if n != len(data) {
 		return nil, errors.New("mpv: ipc: client: failed to write command")
+	}
+	if !m.pipeValid {
+		m.pipeValid = true
 	}
 
 	dctx, cancel := context.WithTimeout(ctx, 10*time.Second)

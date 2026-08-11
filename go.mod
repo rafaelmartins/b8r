@@ -14,5 +14,5 @@ require (
 
 require (
 	github.com/ebitengine/purego v0.9.1 // indirect
-	rafaelmartins.com/p/usbhid v0.0.0-20250616003425-c818f1cb579e // indirect
+	rafaelmartins.com/p/usbhid v0.0.0-20260811025057-543484740bef // indirect
 )

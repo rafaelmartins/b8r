@@ -16,5 +16,5 @@ gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce h1:+JknDZhAj8YMt7
 gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce/go.mod h1:5AcXVHNjg+BDxry382+8OKon8SEWiKktQR07RKPsv1c=
 rafaelmartins.com/p/octokeyz v0.0.0-20250628235640-5c90ed44ee72 h1:h4+mzZgieuOQ0vw/D7y8xDfnpwGQrU72Y6Yt663LLxo=
 rafaelmartins.com/p/octokeyz v0.0.0-20250628235640-5c90ed44ee72/go.mod h1:JSbydFL2dK7NVZODcMDeTSG1Y4Im3qyCZfW4URgpHWw=
-rafaelmartins.com/p/usbhid v0.0.0-20250616003425-c818f1cb579e h1:Xlg01Rbs6PVG1yOvNEmMjI+edsmua23REsPO+tyhOyU=
-rafaelmartins.com/p/usbhid v0.0.0-20250616003425-c818f1cb579e/go.mod h1:focKssvBxJwZE6GrEZipSBZsUwsFkcc0ECSq/In1Kww=
+rafaelmartins.com/p/usbhid v0.0.0-20260811025057-543484740bef h1:R1IycbWCVegqAyyMyO7/bRKQjYi0aTvFX1kayxwWYko=
+rafaelmartins.com/p/usbhid v0.0.0-20260811025057-543484740bef/go.mod h1:Rta/iJgy+IuDjpHCBFwHKTNDfHI2i2z7HfO/re/sOV8=
